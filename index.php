@@ -172,6 +172,7 @@ if ($ids) {
   LEFT JOIN movimenti mv ON mv.lotto_id = l.id
   WHERE l.prodotto_id IN ($idList)
   GROUP BY l.id
+  " . ($hide_zero === 1 ? "HAVING giacenza <> 0" : "") . "
   ORDER BY
     (l.data_scadenza IS NULL) ASC,
     l.data_scadenza ASC,
@@ -312,7 +313,7 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
+<div class="card border-0 shadow-sm of-table-card">
   <div class="table-responsive">
     <table class="table align-middle mb-0 of-table">
       <thead>
@@ -475,6 +476,13 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
   .of-recbar .btn{ border-radius: .75rem; }
 
   .of-lots { display: grid; gap: .35rem; }
+  .of-table-card{
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  .of-table-card .table-responsive{
+    border-radius: 1rem;
+  }
 
   /* header lotti (una sola volta) */
   .of-lots-head{

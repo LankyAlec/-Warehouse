@@ -175,6 +175,7 @@ if ($ids) {
   LEFT JOIN movimenti mv ON mv.lotto_id = l.id
   WHERE l.prodotto_id IN ($idList)
   GROUP BY l.id
+  " . ($hide_zero === 1 ? "HAVING giacenza <> 0" : "") . "
   ORDER BY
     (l.data_scadenza IS NULL) ASC,
     l.data_scadenza ASC,
