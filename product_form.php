@@ -743,7 +743,7 @@ if ($selectedLottoId > 0) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
       </div>
       <div class="modal-body">
-        <div id="viewMovAlert" class="alert alert-primary mb-0"></div>
+        <div id="viewMovDetailBox" class="of-mov-detail"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
@@ -899,6 +899,29 @@ if ($selectedLottoId > 0) {
     min-width: 92px;
     padding: .35rem .65rem;
     font-weight: 800;
+  }
+
+  .of-mov-detail{
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) 2fr;
+    gap: .4rem .85rem;
+    background: #f8fafc;
+    border: 1px solid rgba(0,0,0,.05);
+    border-radius: .85rem;
+    padding: 1rem 1.2rem;
+  }
+  .of-mov-detail-label{
+    color: #6c757d;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    font-size: .8rem;
+  }
+  .of-mov-detail-value{
+    font-weight: 600;
+  }
+  .of-mov-detail .badge{
+    font-size: .85rem;
   }
 </style>
 
@@ -1268,14 +1291,32 @@ if (tipo === 'CARICO') {
 // Note sempre (con placeholder)
 lines.push(`<div><b>Note:</b> ${showOrDash(note)}</div>`);
 
-const alertEl = document.getElementById('viewMovAlert');
-if (alertEl) {
-  alertEl.classList.remove('alert-danger','alert-success');
-  if (tipo === 'SCARICO') alertEl.classList.add('alert-danger');
-  else if (tipo === 'CARICO') alertEl.classList.add('alert-success');
-  else alertEl.classList.add('alert-primary');
-  alertEl.innerHTML = lines.join('');
-}
+  const box = document.getElementById('viewMovDetailBox');
+  if (box) {
+    box.classList.remove('border-success','border-danger','border-primary');
+    if (tipo === 'SCARICO') box.classList.add('border-danger');
+    else if (tipo === 'CARICO') box.classList.add('border-success');
+    else box.classList.add('border-primary');
+
+    const rowHtml = (label, value) => `<div class=\"of-mov-detail-label\">${escHtml(label)}</div><div class=\"of-mov-detail-value\">${value}</div>`;
+    const badgeCls = tipo === 'CARICO' ? 'text-bg-success' : (tipo === 'SCARICO' ? 'text-bg-danger' : 'text-bg-secondary');
+
+    const blocks = [];
+    blocks.push(rowHtml('Data', showOrDash(ts)));
+    blocks.push(rowHtml('Tipo', `<span class=\"badge ${badgeCls}\">${showOrDash(tipo)}</span>`));
+    blocks.push(rowHtml('Quantità', `${showOrDash(String(qta))} ${escHtml(un)}`));
+
+    if (tipo === 'CARICO') {
+      blocks.push(rowHtml('Prezzo unitario', prezzo !== '' ? `€ ${escHtml(prezzo)}` : '—'));
+      blocks.push(rowHtml('Fornitore', showOrDash(fornNome)));
+      const docTxt = [docTipo, docNumero, docData ? ('del ' + docData) : ''].filter(Boolean).join(' ');
+      blocks.push(rowHtml('Documento', showOrDash(docTxt)));
+    }
+
+    blocks.push(rowHtml('Note', showOrDash(note)));
+
+    box.innerHTML = blocks.join('');
+  }
 
     if (!viewMovModalEl || !window.bootstrap) return;
     bootstrap.Modal.getOrCreateInstance(viewMovModalEl).show();
