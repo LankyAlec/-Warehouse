@@ -3,6 +3,10 @@ declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 $PAGE_TITLE = $PAGE_TITLE ?? 'Magazzino';
+$currentPath = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '');
+$navActive = static function(array $names) use ($currentPath): string {
+  return in_array($currentPath, $names, true) ? 'active fw-semibold' : '';
+};
 ?>
 <!doctype html>
 <html lang="it">
@@ -36,4 +40,37 @@ $PAGE_TITLE = $PAGE_TITLE ?? 'Magazzino';
 
 </head>
 <body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="index.php">
+      <i class="bi bi-box-seam"></i>
+      <span>Magazzino</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link <?= $navActive(['index.php']) ?>" href="index.php">Prodotti</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?= $navActive(['categories.php']) ?>" href="categories.php">Categorie</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?= $navActive(['magazzini.php']) ?>" href="magazzini.php">Magazzini</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?= $navActive(['fornitori.php']) ?>" href="fornitori.php">Fornitori</a>
+        </li>
+      </ul>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-light btn-sm" href="login.php">
+          <i class="bi bi-person-circle me-1"></i>
+          Login
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
 <div class="container py-4">
