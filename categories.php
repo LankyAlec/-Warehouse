@@ -81,20 +81,21 @@ LIMIT $perPage OFFSET $offset
 $res = mysqli_query($conn, $sql);
 while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
 ?>
+<?php $from = $total ? ($offset + 1) : 0; $to = min($offset + $perPage, $total); ?>
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
   <div>
     <h1 class="h4 mb-0">Categorie</h1>
-    <div class="text-secondary small">Gestisci le categorie dei prodotti e visualizza quante referenze contengono.</div>
+    <div class="text-secondary small">Gestisci categorie e prodotti associati, in linea con il resto del gestionale.</div>
   </div>
   <div class="d-flex align-items-center gap-2">
-    <span class="badge bg-primary-subtle text-primary py-2 px-3">Totali: <?= $total ?></span>
-    <span class="badge bg-secondary-subtle text-secondary py-2 px-3">Pagina <?= $page ?> di <?= $pages ?></span>
+    <span class="badge bg-primary-subtle text-primary py-2 px-3">Categorie totali: <?= $total ?></span>
+    <span class="badge bg-secondary-subtle text-secondary py-2 px-3">Pagina <?= $page ?> / <?= $pages ?></span>
   </div>
 </div>
 
 <div class="card toolbar-card mb-3">
   <div class="card-body">
-    <div class="row g-3 align-items-end">
+    <div class="row g-3">
       <div class="col-12 col-lg-7">
         <form class="row g-2 align-items-end" method="post">
           <input type="hidden" name="action" value="<?= $editRow ? 'edit' : 'add' ?>">
@@ -122,14 +123,11 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
         </form>
       </div>
       <div class="col-12 col-lg-5">
-        <form class="row g-2 align-items-end" method="get">
-          <div class="col">
+        <form class="row g-2 align-items-end" method="get" id="filterForm">
+          <input type="hidden" name="page" value="1">
+          <div class="col-12">
             <label class="form-label">Cerca</label>
-            <input class="form-control" name="q" value="<?= h($q) ?>" placeholder="Nome o tipo">
-          </div>
-          <div class="col-auto">
-            <label class="form-label d-block">&nbsp;</label>
-            <button class="btn btn-outline-primary">Filtra</button>
+            <input class="form-control" name="q" id="searchInput" value="<?= h($q) ?>" placeholder="Nome o tipo...">
           </div>
           <?php if ($q !== ''): ?>
             <div class="col-auto">
@@ -144,14 +142,18 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
 </div>
 
 <div class="card table-card">
+  <div class="d-flex justify-content-between align-items-center px-3 pt-3">
+    <div class="text-secondary small">Visualizzati: <?= $from ?>–<?= $to ?> di <?= $total ?></div>
+    <div class="text-secondary small">Mostra <?= $perPage ?> per pagina</div>
+  </div>
   <div class="table-responsive">
     <table class="table align-middle mb-0">
       <thead class="table-light">
         <tr>
           <th>Categoria</th>
-          <th style="width:170px">Tipo</th>
-          <th style="width:180px">Prodotti associati</th>
-          <th style="width:180px" class="text-end">Azioni</th>
+          <th style="width:180px">Tipo</th>
+          <th style="width:200px">Prodotti associati</th>
+          <th style="width:200px" class="text-end">Azioni</th>
         </tr>
       </thead>
       <tbody>
@@ -183,7 +185,7 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
   </div>
   <?php if ($pages > 1): ?>
     <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-      <div class="text-secondary small">Mostra <?= $perPage ?> per pagina</div>
+      <div class="text-secondary small">Pagina <?= $page ?> di <?= $pages ?></div>
       <nav>
         <ul class="pagination mb-0">
           <?php
@@ -207,5 +209,19 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
     </div>
   <?php endif; ?>
 </div>
+
+<script>
+(() => {
+  const form = document.getElementById('filterForm');
+  const searchInput = document.getElementById('searchInput');
+  if (!form || !searchInput) return;
+  let t = null;
+  const submit = () => form.submit();
+  searchInput.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(submit, 350);
+  });
+})();
+</script>
 
 <?php require __DIR__ . '/footer.php'; ?>
