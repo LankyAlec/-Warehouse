@@ -49,7 +49,7 @@ function parse_price_nullable(string $raw): ?float {
 
 /**
  * datetime-local (YYYY-MM-DDTHH:MM) -> MySQL (YYYY-MM-DD HH:MM:SS)
- * Se vuoto: fallback ad adesso.
+ * Se vuoto: fallback ad adesso (così la UI può precompilare ma non rompiamo se manca).
  */
 function parse_datetime_local_to_mysql(string $raw): string {
   $raw = trim($raw);
@@ -66,7 +66,7 @@ function parse_datetime_local_to_mysql(string $raw): string {
   return $raw;
 }
 
-$MOV_PER_PAGE = 8;
+$MOV_PER_PAGE = 7;
 
 /* =========================
  * INPUT (GET/POST)
@@ -122,8 +122,8 @@ $render_panel = function(int $pid, int $lid, int $page) use ($conn, $MOV_PER_PAG
 
   ob_start();
   ?>
-  <div class="border rounded p-3 h-100">
-    <div class="d-flex align-items-center justify-content-between mb-2">
+  <div class="border rounded p-3 h-100 d-flex flex-column">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
       <div class="fw-semibold">Storico</div>
       <div class="text-secondary small">
         Pagina <b><?= (int)$page ?></b> / <b><?= (int)$pages ?></b> • Movimenti: <b><?= (int)$tot ?></b>
@@ -133,7 +133,7 @@ $render_panel = function(int $pid, int $lid, int $page) use ($conn, $MOV_PER_PAG
     <?php if (!$movimenti): ?>
       <div class="py-3 text-center text-secondary">Nessun movimento registrato</div>
     <?php else: ?>
-      <div class="table-responsive">
+      <div class="table-responsive flex-grow-1">
         <table class="table table-sm align-middle mb-0">
           <thead class="text-secondary">
             <tr>
@@ -229,7 +229,7 @@ $render_panel = function(int $pid, int $lid, int $page) use ($conn, $MOV_PER_PAG
         $prev = max(1, $page - 1);
         $next = min($pages, $page + 1);
       ?>
-      <div class="d-flex align-items-center justify-content-center mt-3">
+      <div class="mt-auto pt-3 d-flex align-items-center justify-content-center">
         <div class="btn-group" role="group" aria-label="Paginazione movimenti">
           <button type="button"
                   class="btn btn-sm btn-outline-secondary rounded-start-pill of-page-btn js-mov-prev"
@@ -294,8 +294,7 @@ if ($method === 'POST') {
       if (!in_array($tipo, ['CARICO','SCARICO'], true)) throw new RuntimeException('Tipo movimento non valido.');
       if ($qta <= 0) throw new RuntimeException('Quantità non valida.');
 
-      if ($tipo === 'CARICO') {
-        if ($doc_tipo !== '' && !in_array($doc_tipo, ['FATTURA','DDT','ALTRO'], true)) throw new RuntimeException('Tipo documento non valido.');
+      if ($tipo === 'CARICO') {        if ($doc_tipo !== '' && !in_array($doc_tipo, ['FATTURA','DDT','ALTRO'], true)) throw new RuntimeException('Tipo documento non valido.');
         if ($doc_data !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $doc_data)) throw new RuntimeException('Data documento non valida.');
       } else {
         $fornitore_id = 0;
@@ -314,10 +313,7 @@ if ($method === 'POST') {
       $prezzoE = ($tipo === 'CARICO' && $prezzo !== null)
         ? (string)number_format($prezzo, 2, '.', '')
         : "NULL";
-      $fornE = ($tipo === 'CARICO' && $fornitore_id > 0)
-        ? (string)$fornitore_id
-        : "NULL";
-
+      $fornE = ($tipo === 'CARICO' && $fornitore_id > 0) ? (string)$fornitore_id : "NULL";
 
       $docTipoE   = ($tipo === 'CARICO' && $doc_tipo   !== '') ? ("'".mysqli_real_escape_string($conn, $doc_tipo)."'") : "NULL";
       $docNumeroE = ($tipo === 'CARICO' && $doc_numero !== '') ? ("'".mysqli_real_escape_string($conn, $doc_numero)."'") : "NULL";
@@ -367,8 +363,7 @@ if ($method === 'POST') {
       if (!in_array($newTipo, ['CARICO','SCARICO'], true)) throw new RuntimeException('Tipo movimento non valido.');
       if ($newQta <= 0) throw new RuntimeException('Quantità non valida.');
 
-      if ($newTipo === 'CARICO') {
-        if ($newDocTipo !== '' && !in_array($newDocTipo, ['FATTURA','DDT','ALTRO'], true)) throw new RuntimeException('Tipo documento non valido.');
+      if ($newTipo === 'CARICO') {        if ($newDocTipo !== '' && !in_array($newDocTipo, ['FATTURA','DDT','ALTRO'], true)) throw new RuntimeException('Tipo documento non valido.');
         if ($newDocData !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $newDocData)) throw new RuntimeException('Data documento non valida.');
       } else {
         $newForn = 0;
@@ -392,10 +387,7 @@ if ($method === 'POST') {
       $prezzoE = ($newTipo === 'CARICO' && $newPrezzo !== null)
         ? (string)number_format($newPrezzo, 2, '.', '')
         : "NULL";
-      $fornE = ($newTipo === 'CARICO' && $newForn > 0)
-        ? (string)$newForn
-        : "NULL";
-
+      $fornE = ($newTipo === 'CARICO' && $newForn > 0) ? (string)$newForn : "NULL";
 
       $docTipoE   = ($newTipo === 'CARICO' && $newDocTipo   !== '') ? ("'".mysqli_real_escape_string($conn, $newDocTipo)."'") : "NULL";
       $docNumeroE = ($newTipo === 'CARICO' && $newDocNumero !== '') ? ("'".mysqli_real_escape_string($conn, $newDocNumero)."'") : "NULL";

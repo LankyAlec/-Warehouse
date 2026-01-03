@@ -17,7 +17,7 @@ if ($openLottoId > 0) $selectedLottoId = $openLottoId;
 $lotti_page = (int)($_GET['lotti_page'] ?? 1);
 if ($lotti_page < 1) $lotti_page = 1;
 
-$LOTTI_PER_PAGE = 8;
+$LOTTI_PER_PAGE = 7;
 
 
 /* =========================
@@ -381,26 +381,26 @@ if ($selectedLottoId > 0) {
 <div class="row g-3">
   <!-- LOTTI (SINISTRA) -->
   <div class="col-12 col-xl-6">
-    <div class="card table-card h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between gap-2 mb-3 js-lotti-header">
+    <div class="card table-card h-100 d-flex flex-column">
+      <div class="card-body d-flex flex-column flex-grow-1">
+        <div class="d-flex align-items-start justify-content-between mb-3 js-lotti-header">
           <div>
             <div class="fw-semibold fs-5">Lotti</div>
           </div>
           <button class="btn btn-primary btn-sm of-top-action-btn" type="button" data-bs-toggle="modal" data-bs-target="#addLottoModal">
-            <i class="bi bi-plus-lg"></i> Aggiungi lotto
+            <i class="bi bi-plus-lg"></i> Lotto
           </button>
         </div>
 
         <!-- Stile allineato ai movimenti: blocco interno con border + table + pager -->
-        <div class="border rounded p-3">
-          <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="border rounded p-3 h-100 d-flex flex-column">
+          <div class="d-flex align-items-center justify-content-between mb-3">
             <div class="fw-semibold">Storico</div>
             <div class="text-secondary small">
               Pagina <b><?= (int)$lotti_page ?></b> / <b><?= (int)$lotti_pages ?></b> • Giacenza: <b><?= (int)$tot_qta ?></b> <?= h($row['unita']) ?></b>
             </div>
           </div>
-          <div class="table-responsive js-lotti-table">
+          <div class="table-responsive js-lotti-table flex-grow-1">
             <table class="table table-sm align-middle mb-0">
               <thead class="text-secondary">
                 <tr>
@@ -477,7 +477,7 @@ if ($selectedLottoId > 0) {
           </div>
 
           <?php if ($lotti_total > 0): ?>
-            <div class="d-flex align-items-center justify-content-center mt-3 js-lotti-pager">
+            <div class="mt-auto pt-3 d-flex align-items-center justify-content-center js-lotti-pager">
               <?php
                 $prev = max(1, $lotti_page - 1);
                 $next = min($lotti_pages, $lotti_page + 1);
@@ -511,33 +511,32 @@ if ($selectedLottoId > 0) {
 
   <!-- MOVIMENTI (DESTRA) -->
   <div class="col-12 col-xl-6">
-    <div class="card table-card h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <div class="fw-semibold fs-5">Movimenti</div>
-          <button type="button" id="btnAddMov" class="btn btn-primary btn-sm of-top-action-btn" disabled>
-            <i class="bi bi-plus-lg"></i> Aggiungi movimento
-          </button>
+  <div class="card table-card h-100 d-flex flex-column">
+    <div class="card-body d-flex flex-column flex-grow-1">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="fw-semibold fs-5">Movimenti</div>
+        <button type="button" id="btnAddMov" class="btn btn-primary btn-sm of-top-action-btn" disabled>
+          <i class="bi bi-plus-lg"></i> Movimento
+        </button>
+      </div>
+
+      <div class="text-secondary small mb-0"></div>
+
+      <!-- ✅ QUESTO È IL PANNELLO CHE RIEMPIAMO VIA AJAX -->
+      <div id="movimentiPanel" class="of-mov-panel d-flex flex-column flex-grow-1">
+        <div id="movimentiEmpty"
+             class="border rounded p-4 text-center text-muted d-flex flex-column justify-content-center align-items-center flex-grow-1">
+          Seleziona un lotto per registrare movimenti e vedere lo storico.
         </div>
+      </div>
 
-        <div class="text-secondary small mb-3"></div>
-
-
-        <!-- ✅ QUESTO È IL PANNELLO CHE RIEMPIAMO VIA AJAX -->
-        <div id="movimentiPanel" class="of-mov-panel">
-          <div id="movimentiEmpty" class="border rounded p-4 text-center text-muted">
-            Seleziona un lotto per registrare movimenti e vedere lo storico.
-          </div>
-        </div>
-
-        <div id="movimentiContent" class="d-none">
-          <!-- qui dentro renderizzi tabella/form movimenti -->
-          <div id="movimentiTableWrap"></div>
-        </div>
-
+      <div id="movimentiContent" class="d-none">
+        <!-- qui dentro renderizzi tabella/form movimenti -->
+        <div id="movimentiTableWrap"></div>
       </div>
     </div>
   </div>
+</div>
 </div>
 
 <?php endif; ?>
@@ -659,16 +658,21 @@ if ($selectedLottoId > 0) {
           </div>
 
           <div class="col-12 col-md-4">
-            <label class="form-label mb-1">Data e ora</label>
-            <input type="datetime-local" class="form-control" name="mov_ts" id="new_mov_ts" required>
-          </div>
-
-          <div class="col-12 col-md-4">
             <label class="form-label mb-1">Quantità</label>
             <input type="number" class="form-control" name="mov_quantita" id="new_mov_quantita" min="1" step="1" required>
           </div>
 
+          <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Data e ora</label>
+            <input type="datetime-local" class="form-control" name="mov_ts" id="new_mov_ts" required>
+          </div>
+
           <div class="col-12 col-md-4 of-only-carico-new">
+            <label class="form-label mb-1">Prezzo unitario</label>
+            <input class="form-control" name="mov_prezzo" id="new_mov_prezzo" inputmode="decimal" placeholder="es. 12.50">
+          </div>
+
+          <div class="col-12 col-md-6 of-only-carico-new">
             <label class="form-label mb-1">Fornitore</label>
             <select class="form-select" name="mov_fornitore_id" id="new_mov_fornitore_id">
               <option value="0">—</option>
@@ -678,12 +682,7 @@ if ($selectedLottoId > 0) {
             </select>
           </div>
 
-          <div class="col-12 col-md-4 of-only-carico-new">
-            <label class="form-label mb-1">Prezzo unitario</label>
-            <input class="form-control" name="mov_prezzo" id="new_mov_prezzo" inputmode="decimal" placeholder="es. 12.50">
-          </div>
-
-          <div class="col-12 col-md-4 of-only-carico-new">
+          <div class="col-12 col-md-3 of-only-carico-new">
             <label class="form-label mb-1">Doc. tipo</label>
             <select class="form-select" name="mov_doc_tipo" id="new_mov_doc_tipo">
               <option value="">—</option>
@@ -693,12 +692,12 @@ if ($selectedLottoId > 0) {
             </select>
           </div>
 
-          <div class="col-12 col-md-4 of-only-carico-new">
+          <div class="col-12 col-md-3 of-only-carico-new">
             <label class="form-label mb-1">Doc. numero</label>
             <input class="form-control" name="mov_doc_numero" id="new_mov_doc_numero" placeholder="es. 123/2026">
           </div>
 
-          <div class="col-12 col-md-4 of-only-carico-new">
+          <div class="col-12 col-md-3 of-only-carico-new">
             <label class="form-label mb-1">Doc. data</label>
             <input type="date" class="form-control" name="mov_doc_data" id="new_mov_doc_data">
           </div>
@@ -720,84 +719,21 @@ if ($selectedLottoId > 0) {
 
 <!-- MODAL DETTAGLIO MOVIMENTO -->
 <div class="modal fade" id="viewMovModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0">
-        <div class="w-100">
-          <div class="d-flex align-items-start justify-content-between">
-            <div>
-              <div class="d-flex align-items-center gap-2">
-                <span id="vm_tipo_badge" class="badge rounded-pill"></span>
-                <span class="text-secondary small">Dettaglio movimento</span>
-              </div>
-              <div class="fs-5 fw-semibold mt-1" id="vm_ts">—</div>
-            </div>
-
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
-          </div>
-
-          <hr class="mt-3 mb-0">
-        </div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Dettaglio movimento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
       </div>
-
-      <div class="modal-body pt-3">
-        <div class="row g-3">
-          <!-- Quantità -->
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded-4 bg-body-tertiary">
-              <div class="text-secondary small mb-1">Quantità</div>
-              <div class="d-flex align-items-end gap-2">
-                <div class="display-6 fw-semibold lh-1" id="vm_qta">0</div>
-                <div class="text-secondary mb-1" id="vm_unita">pz</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Note -->
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded-4 bg-body-tertiary h-100">
-              <div class="text-secondary small mb-1">Note</div>
-              <div class="fw-semibold" id="vm_note">—</div>
-            </div>
-          </div>
-
-          <!-- Box CARICO (mostrato solo se tipo=CARICO) -->
-          <div class="col-12" id="vm_box_carico" style="display:none;">
-            <div class="p-3 rounded-4 border">
-              <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
-                <i class="bi bi-truck"></i>
-                <span>Dettagli carico</span>
-              </div>
-
-              <div class="row g-3">
-                <div class="col-12 col-md-4">
-                  <div class="text-secondary small">Fornitore</div>
-                  <div class="fw-semibold" id="vm_fornitore">—</div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                  <div class="text-secondary small">Prezzo unitario</div>
-                  <div class="fw-semibold">
-                    <span id="vm_prezzo">—</span>
-                    <span class="text-secondary small ms-1">€</span>
-                  </div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                  <div class="text-secondary small">Documento</div>
-                  <div class="fw-semibold" id="vm_doc">—</div>
-                  <div class="text-secondary small" id="vm_doc_data"> </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
+      <div class="modal-body">
+        <div id="viewMovAlert" class="alert alert-primary mb-0"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
       </div>
     </div>
   </div>
 </div>
-
 
 <!-- MODAL MODIFICA MOVIMENTO -->
 <div class="modal fade" id="editMovModal" tabindex="-1" aria-hidden="true">
@@ -826,13 +762,18 @@ if ($selectedLottoId > 0) {
           </div>
 
           <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Quantità</label>
+            <input type="number" class="form-control" name="edit_quantita" id="edit_quantita" min="1" step="1" required>
+          </div>
+
+          <div class="col-12 col-md-4">
             <label class="form-label mb-1">Data e ora</label>
             <input type="datetime-local" class="form-control" name="edit_ts" id="edit_ts" required>
           </div>
 
-          <div class="col-12 col-md-4">
-            <label class="form-label mb-1">Quantità</label>
-            <input type="number" class="form-control" name="edit_quantita" id="edit_quantita" min="1" step="1" required>
+          <div class="col-12 col-md-4 of-only-carico-edit">
+            <label class="form-label mb-1">Prezzo unitario</label>
+            <input class="form-control" name="edit_prezzo" id="edit_prezzo" inputmode="decimal" placeholder="es. 12.50">
           </div>
 
           <div class="col-12 col-md-4 of-only-carico-edit">
@@ -843,11 +784,6 @@ if ($selectedLottoId > 0) {
                 <option value="<?= (int)$f['id'] ?>"><?= h((string)$f['nome']) ?></option>
               <?php endforeach; ?>
             </select>
-          </div>
-
-          <div class="col-12 col-md-4 of-only-carico-edit">
-            <label class="form-label mb-1">Prezzo unitario</label>
-            <input class="form-control" name="edit_prezzo" id="edit_prezzo" inputmode="decimal" placeholder="es. 12.50">
           </div>
 
           <div class="col-12 col-md-4 of-only-carico-edit">
@@ -1483,59 +1419,6 @@ if (alertEl) {
     refreshMovimenti(initialLotto, 1);
   }
 })();
-</script>
-<script>
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.js-view-mov');
-  if (!btn) return;
-
-  const tipo = (btn.dataset.movTipo || '').toUpperCase();
-  const ts   = btn.dataset.movTs || '—';
-  const qta  = btn.dataset.movQta || '0';
-  const unita = btn.dataset.movUnita || 'pz';
-  const note = (btn.dataset.movNote || '').trim();
-
-  const prezzo = (btn.dataset.movPrezzo || '').trim();
-  const fornNome = (btn.dataset.movFornNome || '').trim();
-
-  const docTipo = (btn.dataset.movDocTipo || '').trim();
-  const docNumero = (btn.dataset.movDocNumero || '').trim();
-  const docData = (btn.dataset.movDocData || '').trim();
-
-  // Header
-  const badge = document.getElementById('vm_tipo_badge');
-  badge.textContent = tipo || '—';
-  badge.className = 'badge rounded-pill ' + (tipo === 'CARICO' ? 'text-bg-success' : 'text-bg-danger');
-
-  document.getElementById('vm_ts').textContent = ts;
-
-  // Quantità
-  document.getElementById('vm_qta').textContent = qta;
-  document.getElementById('vm_unita').textContent = unita;
-
-  // Note
-  document.getElementById('vm_note').textContent = note !== '' ? note : '—';
-
-  // Box carico
-  const boxCarico = document.getElementById('vm_box_carico');
-  if (tipo === 'CARICO') {
-    boxCarico.style.display = '';
-
-    document.getElementById('vm_fornitore').textContent = fornNome !== '' ? fornNome : '—';
-    document.getElementById('vm_prezzo').textContent = prezzo !== '' ? prezzo : '—';
-
-    // Documento “compatto”
-    let docTxt = '—';
-    if (docTipo || docNumero) {
-      docTxt = (docTipo ? docTipo : 'DOC') + (docNumero ? (' ' + docNumero) : '');
-    }
-    document.getElementById('vm_doc').textContent = docTxt;
-
-    document.getElementById('vm_doc_data').textContent = docData ? ('Data: ' + docData) : '';
-  } else {
-    boxCarico.style.display = 'none';
-  }
-});
 </script>
 
 
