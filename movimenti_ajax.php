@@ -172,7 +172,7 @@ $render_panel = function(int $pid, int $lid, int $page) use ($conn, $MOV_PER_PAG
             ?>
             <tr>
               <td><?= h($tsLbl) ?></td>
-              <td><span class="badge <?= h($tipoBadge) ?>"><?= h($tipo) ?></span></td>
+              <td><span class="badge of-mov-badge <?= h($tipoBadge) ?>"><?= h($tipo) ?></span></td>
               <td class="text-end"><b><?= (int)$m['quantita'] ?></b> <?= h($unita) ?></td>
               <td class="text-end">
                 <button type="button"

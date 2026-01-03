@@ -20,7 +20,6 @@ $prezzo = qfloat($_POST['prezzo'] ?? '0', 0);
 $scaffale = trim((string)($_POST['scaffale'] ?? ''));
 $ripiano  = trim((string)($_POST['ripiano'] ?? ''));
 
-$quantita = qfloat($_POST['quantita'] ?? '0', 0);
 $unita = (string)($_POST['unita'] ?? 'pz');
 $allowedU = ['pz','kg','g','l','ml','altro'];
 if (!in_array($unita, $allowedU, true)) $unita = 'pz';
@@ -44,7 +43,7 @@ try {
     $sql = "UPDATE prodotti
             SET id_magazzino=:mid, id_categoria=:cat, nome=:nome, descrizione=:descr,
                 anno_produzione=:anno, prezzo=:prezzo, scaffale=:scaff, ripiano=:ripi,
-                quantita=:qta, unita=:unita, data_scadenza=:scad
+                unita=:unita, data_scadenza=:scad
             WHERE id=:id
             LIMIT 1";
     $stmt = $pdo->prepare($sql);
@@ -57,7 +56,6 @@ try {
       ':prezzo' => number_format($prezzo, 2, '.', ''),
       ':scaff' => ($scaffale !== '' ? $scaffale : null),
       ':ripi' => ($ripiano !== '' ? $ripiano : null),
-      ':qta' => $quantita,
       ':unita' => $unita,
       ':scad' => $data_scadenza,
       ':id' => $id,
@@ -65,9 +63,9 @@ try {
     flash_set('success', 'Prodotto aggiornato');
   } else {
     $sql = "INSERT INTO prodotti
-            (id_magazzino, id_categoria, nome, descrizione, anno_produzione, prezzo, scaffale, ripiano, quantita, unita, data_scadenza)
+            (id_magazzino, id_categoria, nome, descrizione, anno_produzione, prezzo, scaffale, ripiano, unita, data_scadenza)
             VALUES
-            (:mid, :cat, :nome, :descr, :anno, :prezzo, :scaff, :ripi, :qta, :unita, :scad)";
+            (:mid, :cat, :nome, :descr, :anno, :prezzo, :scaff, :ripi, :unita, :scad)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
       ':mid' => $mid,
@@ -78,7 +76,6 @@ try {
       ':prezzo' => number_format($prezzo, 2, '.', ''),
       ':scaff' => ($scaffale !== '' ? $scaffale : null),
       ':ripi' => ($ripiano !== '' ? $ripiano : null),
-      ':qta' => $quantita,
       ':unita' => $unita,
       ':scad' => $data_scadenza,
     ]);

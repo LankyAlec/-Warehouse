@@ -116,27 +116,13 @@ if (($_POST['action'] ?? '') === 'save') {
     $magE   = (string)$row['magazzino_id'];
     $unitaE = "'" . esc($conn, $row['unita']) . "'";
 
-    // prodotto pulito: giacenza/scadenza/prezzo non su prodotto
-    $quantitaReset = 0;
-    $scadReset     = "NULL";
-    $prezzoReset   = "0.00";
-    $annoReset     = "NULL";
-    $scaffReset    = "NULL";
-    $ripiReset     = "NULL";
-
     if ($id > 0) {
       $sql = "UPDATE prodotti SET
         nome=$nomeE,
         descrizione=$descE,
         categoria_id=$catE,
         magazzino_id=$magE,
-        unita=$unitaE,
-        quantita=$quantitaReset,
-        data_scadenza=$scadReset,
-        prezzo=$prezzoReset,
-        anno_produzione=$annoReset,
-        scaffale=$scaffReset,
-        ripiano=$ripiReset
+        unita=$unitaE
       WHERE id=$id LIMIT 1";
 
       $ok = mysqli_query($conn, $sql);
@@ -144,9 +130,9 @@ if (($_POST['action'] ?? '') === 'save') {
       $err = 'Errore salvataggio: ' . (mysqli_error($conn) ?: 'query failed');
     } else {
       $sql = "INSERT INTO prodotti
-        (nome, descrizione, categoria_id, magazzino_id, unita, quantita, data_scadenza, prezzo, anno_produzione, scaffale, ripiano, attivo)
+        (nome, descrizione, categoria_id, magazzino_id, unita, attivo)
       VALUES
-        ($nomeE, $descE, $catE, $magE, $unitaE, $quantitaReset, $scadReset, $prezzoReset, $annoReset, $scaffReset, $ripiReset, 1)";
+        ($nomeE, $descE, $catE, $magE, $unitaE, 1)";
 
       $ok = mysqli_query($conn, $sql);
       if ($ok) {
@@ -872,6 +858,14 @@ if ($selectedLottoId > 0) {
 
   /* stabilizza altezza pannello movimenti */
   .of-mov-panel { min-height: 520px; }
+  .of-mov-badge{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    padding: .35rem .65rem;
+    font-weight: 800;
+  }
 
   .border.rounded.p-3 .table { margin-bottom: 0; }
 </style>
@@ -891,6 +885,14 @@ if ($selectedLottoId > 0) {
 
   const urlParams = new URLSearchParams(window.location.search);
   const prodottoId = urlParams.get('id') || '0';
+
+  // lotto di partenza: accettiamo sia lotto_sel (interno) che lotto_id (da index.php)
+  const initialUrlLotto = (
+    urlParams.get('lotto_sel') ||
+    urlParams.get('lotto_id') ||
+    (lottoSelect && lottoSelect.value) ||
+    '0'
+  );
 
   // Flash message auto-hide (5s)
   const flash = document.getElementById('flashAlert');
@@ -924,7 +926,7 @@ if ($selectedLottoId > 0) {
 
   let currentPage = 1;
   let currentLottiPage = parseInt(urlParams.get('lotti_page') || '1', 10) || 1;
-  let currentLottoId = (urlParams.get('lotto_sel') || (lottoSelect && lottoSelect.value) || '0');
+  let currentLottoId = initialUrlLotto;
 
   const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1413,9 +1415,10 @@ if (alertEl) {
   }
 
   // init: se la pagina arriva con lotto selezionato (via GET), carico subito
-  const initialLotto = (urlParams.get('lotto_sel') || (lottoSelect && lottoSelect.value) || '0');
+  const initialLotto = initialUrlLotto;
   if (initialLotto !== '0') {
     highlightRowByLottoId(initialLotto);
+    setUrlState({ lotto_sel: initialLotto, lotto_id: null });
     refreshMovimenti(initialLotto, 1);
   }
 })();
