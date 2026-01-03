@@ -53,7 +53,7 @@ try {
       ':mid' => $mid,
       ':cat' => $id_categoria,
       ':nome' => $nome,
-      ':descr' => ($descrizione !== '' ? $descrizione : null)
+      ':descr' => ($descrizione !== '' ? $descrizione : null),
       ':unita' => $unita,
     ]);
     flash_set('success', 'Prodotto creato');
