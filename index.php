@@ -11,6 +11,7 @@ $magazzino_id = (int)($_GET['magazzino_id'] ?? 0);
 $categoria_id = (int)($_GET['categoria_id'] ?? 0);
 $expiring     = (int)($_GET['expiring'] ?? 0);
 $days         = max(0, (int)($_GET['days'] ?? 30));
+$hide_zero    = (int)($_GET['hide_zero'] ?? 0);
 
 $per_page = (int)($_GET['per_page'] ?? 25);
 $per_page = in_array($per_page, [10, 25, 50, 100], true) ? $per_page : 25;
@@ -59,6 +60,7 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $cat[] = $r;
  * WHERE (prodotti + match su lotti)
  * ======================= */
 $where = ["p.attivo=1"];
+$stockExpr = "COALESCE((SELECT SUM(CASE WHEN mv.tipo='CARICO' THEN mv.quantita ELSE -mv.quantita END) FROM movimenti mv WHERE mv.prodotto_id = p.id),0)";
 
 if ($q !== '') {
   $qq = esc($conn, $q);
@@ -80,6 +82,7 @@ if ($q !== '') {
 
 if ($magazzino_id > 0) $where[] = "p.magazzino_id=".(int)$magazzino_id;
 if ($categoria_id > 0) $where[] = "p.categoria_id=".(int)$categoria_id;
+if ($hide_zero === 1) $where[] = "$stockExpr <> 0";
 
 if ($expiring === 1) {
   $where[] = "EXISTS (
@@ -274,6 +277,13 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
             <option value="<?= $pp ?>" <?= ($pp === $per_page ? 'selected' : '') ?>><?= $pp ?></option>
           <?php endforeach; ?>
         </select>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="form-check form-switch mt-1">
+          <input class="form-check-input" type="checkbox" role="switch" id="hide_zero" name="hide_zero" value="1" <?= ($hide_zero === 1 ? 'checked' : '') ?>>
+          <label class="form-check-label" for="hide_zero">Nascondi prodotti con giacenza 0</label>
+        </div>
       </div>
 
       <input type="hidden" name="page" id="page" value="<?= (int)$page ?>">
@@ -594,7 +604,7 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
 
   q.addEventListener('input', debounceRefresh);
 
-  ['magazzino_id','categoria_id','per_page','expiring','days'].forEach(id => {
+  ['magazzino_id','categoria_id','per_page','expiring','days','hide_zero'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('change', () => {

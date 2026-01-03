@@ -16,6 +16,8 @@ if ($openLottoId > 0) $selectedLottoId = $openLottoId;
 
 $lotti_page = (int)($_GET['lotti_page'] ?? 1);
 if ($lotti_page < 1) $lotti_page = 1;
+$hide_zero = (int)($_REQUEST['hide_zero'] ?? 0);
+$filterSuffix = ($hide_zero === 1) ? '&hide_zero=1' : '';
 
 $LOTTI_PER_PAGE = 7;
 
@@ -130,11 +132,11 @@ if (($_POST['action'] ?? '') === 'save') {
         descrizione=$descE,
         categoria_id=$catE,
         magazzino_id=$magE,
-        unita=$unitaE,
+        unita=$unitaE
       WHERE id=$id LIMIT 1";
 
       $ok = mysqli_query($conn, $sql);
-      if ($ok) redirect('product_form.php?id='.$id.'&msg='.urlencode('Prodotto salvato'));
+      if ($ok) redirect('product_form.php?id='.$id.'&msg='.urlencode('Prodotto salvato').$filterSuffix);
       $err = 'Errore salvataggio: ' . (mysqli_error($conn) ?: 'query failed');
     } else {
       $sql = "INSERT INTO prodotti
@@ -145,7 +147,7 @@ if (($_POST['action'] ?? '') === 'save') {
       $ok = mysqli_query($conn, $sql);
       if ($ok) {
         $newId = (int)mysqli_insert_id($conn);
-        redirect('product_form.php?id='.$newId.'&msg='.urlencode('Prodotto creato. Ora aggiungi i lotti.'));
+        redirect('product_form.php?id='.$newId.'&msg='.urlencode('Prodotto creato. Ora aggiungi i lotti.').$filterSuffix);
       }
       $err = 'Errore inserimento: ' . (mysqli_error($conn) ?: 'query failed');
     }
@@ -185,7 +187,7 @@ if (($_POST['action'] ?? '') === 'add_lotto') {
     $sql = "INSERT INTO lotti (prodotto_id, magazzino_id, anno_produzione, data_scadenza, scaffale, ripiano)
             VALUES ($pid, $magE, $annoE, $scadE, $scaffE, $ripiE)";
     $ok = mysqli_query($conn, $sql);
-    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto aggiunto'));
+    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto aggiunto').$filterSuffix);
     $err = 'Errore inserimento lotto: ' . (mysqli_error($conn) ?: 'query failed');
   }
 }
@@ -220,7 +222,7 @@ if (($_POST['action'] ?? '') === 'edit_lotto') {
             WHERE id=$lid AND prodotto_id=$pid
             LIMIT 1";
     $ok = mysqli_query($conn, $sql);
-    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto modificato'));
+    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto modificato').$filterSuffix);
     $err = 'Errore modifica lotto: ' . (mysqli_error($conn) ?: 'query failed');
   }
 }
@@ -231,7 +233,7 @@ if (($_POST['action'] ?? '') === 'del_lotto') {
 
   if ($pid > 0 && $lid > 0) {
     $ok = mysqli_query($conn, "DELETE FROM lotti WHERE id=$lid AND prodotto_id=$pid LIMIT 1");
-    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto eliminato'));
+    if ($ok) redirect('product_form.php?id='.$pid.'&msg='.urlencode('Lotto eliminato').$filterSuffix);
     $err = 'Errore eliminazione lotto: ' . (mysqli_error($conn) ?: 'query failed');
   } else $err = 'Lotto non valido.';
 }
@@ -267,7 +269,16 @@ $lotti_pages = 1;
 
 if ($id > 0) {
   // totale lotti
-  $resC = mysqli_query($conn, "SELECT COUNT(*) AS c FROM lotti WHERE prodotto_id=$id");
+  $sqlCountLotti = "SELECT COUNT(*) AS c FROM lotti l
+    LEFT JOIN (
+      SELECT lotto_id, SUM(CASE WHEN tipo='CARICO' THEN quantita ELSE -quantita END) AS giacenza
+      FROM movimenti
+      WHERE prodotto_id=$id
+      GROUP BY lotto_id
+    ) m ON m.lotto_id = l.id
+    WHERE l.prodotto_id=$id";
+  if ($hide_zero === 1) $sqlCountLotti .= " AND COALESCE(m.giacenza,0) <> 0";
+  $resC = mysqli_query($conn, $sqlCountLotti);
   if ($resC && ($cc = mysqli_fetch_assoc($resC))) $lotti_total = (int)$cc['c'];
 
   $lotti_pages = max(1, (int)ceil($lotti_total / $LOTTI_PER_PAGE));
@@ -289,7 +300,9 @@ if ($id > 0) {
              WHERE prodotto_id=$id
              GROUP BY lotto_id
            ) m ON m.lotto_id = l.id
-           WHERE l.prodotto_id=$id
+           WHERE l.prodotto_id=$id";
+  if ($hide_zero === 1) $sqlL .= " AND COALESCE(m.giacenza,0) <> 0";
+  $sqlL .= "
            ORDER BY l.data_scadenza ASC, l.id ASC
            LIMIT $LOTTI_PER_PAGE OFFSET $offset";
   $res = mysqli_query($conn, $sqlL);
@@ -318,6 +331,7 @@ if ($selectedLottoId > 0) {
     <form method="post" class="row g-3">
       <input type="hidden" name="action" value="save">
       <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+      <input type="hidden" name="hide_zero" value="<?= (int)$hide_zero ?>">
 
       <div class="col-12 col-md-6">
         <label class="form-label">Magazzino *</label>
@@ -388,10 +402,16 @@ if ($selectedLottoId > 0) {
 
         <!-- Stile allineato ai movimenti: blocco interno con border + table + pager -->
         <div class="border rounded p-3 h-100 d-flex flex-column">
-          <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <div class="fw-semibold">Storico</div>
-            <div class="text-secondary small">
-              Pagina <b><?= (int)$lotti_page ?></b> / <b><?= (int)$lotti_pages ?></b> • Giacenza: <b><?= (int)$tot_qta ?></b> <?= h($row['unita']) ?></b>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <div class="text-secondary small mb-0">
+                Pagina <b><?= (int)$lotti_page ?></b> / <b><?= (int)$lotti_pages ?></b> • Giacenza: <b><?= (int)$tot_qta ?></b> <?= h($row['unita']) ?></b>
+              </div>
+              <div class="form-check form-switch small mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="hideZeroLotti" name="hide_zero" value="1" <?= ($hide_zero === 1 ? 'checked' : '') ?>>
+                <label class="form-check-label" for="hideZeroLotti">Nascondi lotti con giacenza 0</label>
+              </div>
             </div>
           </div>
           <div class="table-responsive js-lotti-table flex-grow-1">
@@ -457,6 +477,7 @@ if ($selectedLottoId > 0) {
                     <form method="post" class="d-inline" onsubmit="return confirm('Eliminare questo lotto?');">
                       <input type="hidden" name="action" value="del_lotto">
                       <input type="hidden" name="id" value="<?= (int)$id ?>">
+                      <input type="hidden" name="hide_zero" value="<?= (int)$hide_zero ?>">
                       <input type="hidden" name="lotto_id" value="<?= $lid ?>">
                       <button class="btn btn-sm btn-outline-danger of-icon-btn"
                               title="Elimina lotto" aria-label="Elimina lotto">
@@ -541,6 +562,7 @@ if ($selectedLottoId > 0) {
     <form method="post" class="modal-content">
       <input type="hidden" name="action" value="add_lotto">
       <input type="hidden" name="id" value="<?= (int)$id ?>">
+      <input type="hidden" name="hide_zero" value="<?= (int)$hide_zero ?>">
 
       <div class="modal-header">
         <h5 class="modal-title">Aggiungi lotto</h5>
@@ -589,6 +611,7 @@ if ($selectedLottoId > 0) {
       <input type="hidden" name="action" value="edit_lotto">
       <input type="hidden" name="id" value="<?= (int)$id ?>">
       <input type="hidden" name="lotto_id" id="edit_lotto_id" value="">
+      <input type="hidden" name="hide_zero" value="<?= (int)$hide_zero ?>">
 
       <div class="modal-header">
         <h5 class="modal-title">Modifica lotto</h5>
@@ -932,6 +955,14 @@ if ($selectedLottoId > 0) {
     if (annoEl) annoEl.value = btn.dataset.anno || '';
     if (scaffEl) scaffEl.value = btn.dataset.scaff || '';
     if (ripiEl) ripiEl.value = btn.dataset.ripi || '';
+  });
+
+  document.addEventListener('change', async (e) => {
+    const chk = e.target.closest('#hideZeroLotti');
+    if (!chk) return;
+    const checked = chk.checked;
+    setUrlState({ hide_zero: checked ? 1 : null, lotti_page: 1 });
+    await refreshSideFromPage(currentLottoId, 1);
   });
 
   let currentPage = 1;
