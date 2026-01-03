@@ -131,12 +131,6 @@ if (($_POST['action'] ?? '') === 'save') {
         categoria_id=$catE,
         magazzino_id=$magE,
         unita=$unitaE,
-        quantita=$quantitaReset,
-        data_scadenza=$scadReset,
-        prezzo=$prezzoReset,
-        anno_produzione=$annoReset,
-        scaffale=$scaffReset,
-        ripiano=$ripiReset
       WHERE id=$id LIMIT 1";
 
       $ok = mysqli_query($conn, $sql);
@@ -144,9 +138,9 @@ if (($_POST['action'] ?? '') === 'save') {
       $err = 'Errore salvataggio: ' . (mysqli_error($conn) ?: 'query failed');
     } else {
       $sql = "INSERT INTO prodotti
-        (nome, descrizione, categoria_id, magazzino_id, unita, quantita, data_scadenza, prezzo, anno_produzione, scaffale, ripiano, attivo)
+        (nome, descrizione, categoria_id, magazzino_id, unita, attivo)
       VALUES
-        ($nomeE, $descE, $catE, $magE, $unitaE, $quantitaReset, $scadReset, $prezzoReset, $annoReset, $scaffReset, $ripiReset, 1)";
+        ($nomeE, $descE, $catE, $magE, $unitaE, 1)";
 
       $ok = mysqli_query($conn, $sql);
       if ($ok) {
