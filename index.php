@@ -131,6 +131,7 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
 
 /* =========================
  * LOTTI (per i prodotti della pagina)
+ * - nuova logica: giacenza da movimenti, prezzo = ultimo prezzo CARICO (se presente)
  * ======================= */
 $ids = array_map(fn($x) => (int)$x['id'], $rows);
 $lotsByProd = [];
@@ -140,12 +141,34 @@ if ($ids) {
 
   $sqlLots = "
   SELECT
-    l.id, l.prodotto_id,
-    l.quantita, l.prezzo,
-    l.scaffale, l.ripiano,
-    l.data_scadenza
+    l.id,
+    l.prodotto_id,
+    l.scaffale,
+    l.ripiano,
+    l.data_scadenza,
+
+    COALESCE(SUM(
+      CASE
+        WHEN mv.tipo='CARICO'  THEN mv.quantita
+        WHEN mv.tipo='SCARICO' THEN -mv.quantita
+        ELSE 0
+      END
+    ),0) AS giacenza,
+
+    (
+      SELECT mv2.prezzo
+      FROM movimenti mv2
+      WHERE mv2.lotto_id = l.id
+        AND mv2.tipo='CARICO'
+        AND mv2.prezzo IS NOT NULL
+      ORDER BY mv2.ts DESC, mv2.id DESC
+      LIMIT 1
+    ) AS ultimo_prezzo
+
   FROM lotti l
+  LEFT JOIN movimenti mv ON mv.lotto_id = l.id
   WHERE l.prodotto_id IN ($idList)
+  GROUP BY l.id
   ORDER BY
     (l.data_scadenza IS NULL) ASC,
     l.data_scadenza ASC,
@@ -316,7 +339,7 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
           $lots = $lotsByProd[$pid] ?? [];
 
           $totQty = 0;
-          foreach ($lots as $l) $totQty += (int)$l['quantita'];
+          foreach ($lots as $l) $totQty += (int)($l['giacenza'] ?? 0);
         ?>
         <tr>
           <td>
@@ -347,14 +370,14 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
                 <?php foreach ($lots as $l): ?>
                   <?php
                     $lottoId = (int)$l['id'];
-                    $qty = (int)$l['quantita'];
+                    $qty = (int)($l['giacenza'] ?? 0);
 
                     $scaff = trim((string)($l['scaffale'] ?? ''));
                     $ripi  = trim((string)($l['ripiano'] ?? ''));
                     if ($scaff === '') $scaff = '—';
                     if ($ripi  === '') $ripi  = '—';
 
-                    $prezzo = ((float)($l['prezzo'] ?? 0) > 0) ? ('€ '.money($l['prezzo'])) : '—';
+                    $prezzo = ((float)($l['ultimo_prezzo'] ?? 0) > 0) ? ('€ '.money($l['ultimo_prezzo'])) : '—';
 
                     $today = date('Y-m-d');
                     $rawScad = !empty($l['data_scadenza']) ? (string)$l['data_scadenza'] : '';
@@ -369,7 +392,7 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
                   ?>
 
                   <a class="of-lotrow"
-                     href="product_form.php?id=<?= $pid ?>&lotto_id=<?= $lottoId ?>"
+                     href="product_form.php?id=<?= $pid ?>&lotto_id=<?= $lottoId ?>#movimenti"
                      title="Modifica lotto">
                     <span class="fw-semibold"><?= $qty ?> <?= h($r['unita']) ?></span>
                     <span><?= h($prezzo) ?></span>
@@ -386,13 +409,30 @@ $nextUrl = 'index.php?' . http_build_query($baseParams);
           </td>
 
           <td class="text-end">
-            <a class="btn btn-sm btn-outline-primary" href="product_form.php?id=<?= $pid ?>">Modifica</a>
-            <form class="d-inline" method="post" action="index.php" onsubmit="return confirm('Eliminare il prodotto?');">
+            <!-- MODIFICA -->
+            <a href="product_form.php?id=<?= $pid ?>"
+               class="btn btn-sm btn-outline-primary of-icon-btn"
+               title="Modifica prodotto"
+               aria-label="Modifica">
+              <i class="bi bi-pencil-square"></i>
+            </a>
+
+            <!-- ELIMINA -->
+            <form class="d-inline"
+                  method="post"
+                  action="index.php"
+                  onsubmit="return confirm('Eliminare il prodotto?');">
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="id" value="<?= $pid ?>">
-              <button class="btn btn-sm btn-outline-danger">Elimina</button>
+              <button type="submit"
+                      class="btn btn-sm btn-outline-danger of-icon-btn"
+                      title="Elimina prodotto"
+                      aria-label="Elimina">
+                <i class="bi bi-trash"></i>
+              </button>
             </form>
           </td>
+
         </tr>
       <?php endforeach; endif; ?>
       </tbody>
