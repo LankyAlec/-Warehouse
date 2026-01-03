@@ -130,7 +130,7 @@ if (($_POST['action'] ?? '') === 'save') {
         descrizione=$descE,
         categoria_id=$catE,
         magazzino_id=$magE,
-        unita=$unitaE,
+        unita=$unitaE
       WHERE id=$id LIMIT 1";
 
       $ok = mysqli_query($conn, $sql);
