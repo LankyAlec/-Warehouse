@@ -1,6 +1,5 @@
 <?php
 include __DIR__ . '/includes/header.php';
-require_once __DIR__ . '/includes/magazzino_bridge.php';
 
 $oggi = date('Y-m-d');
 
@@ -187,10 +186,50 @@ foreach ($rows as $rw) {
 }
 
 /* ================== 7) Magazzino: prodotti e scadenze ================== */
-$magazzinoStats = magazzino_stats(30);
-$magazzino_ok   = $magazzinoStats['ok'] ?? false;
-$prodotti_mag   = (int)($magazzinoStats['prodotti_presenti'] ?? 0);
-$prodotti_scad  = (int)($magazzinoStats['prodotti_in_scadenza'] ?? 0);
+$magazzino_ok  = false;
+$prodotti_mag  = 0;
+$prodotti_scad = 0;
+$magazzinoDays = 30;
+
+$sql_magazzino = "
+    SELECT
+        SUM(CASE WHEN stock > 0 THEN 1 ELSE 0 END) AS prodotti_presenti,
+        SUM(CASE WHEN stock > 0 AND expiring > 0 THEN 1 ELSE 0 END) AS prodotti_in_scadenza
+    FROM (
+        SELECT
+            p.id,
+            COALESCE((
+                SELECT SUM(
+                    CASE WHEN mv.tipo='CARICO' THEN mv.quantita ELSE -mv.quantita END
+                )
+                FROM movimenti mv
+                WHERE mv.prodotto_id = p.id
+            ), 0) AS stock,
+            (
+                SELECT COUNT(1)
+                FROM lotti l
+                WHERE l.prodotto_id = p.id
+                  AND l.data_scadenza IS NOT NULL
+                  AND l.data_scadenza <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+            ) AS expiring
+        FROM prodotti p
+        WHERE p.attivo = 1
+    ) AS t
+";
+
+$stmt = $mysqli->prepare($sql_magazzino);
+if ($stmt) {
+    $stmt->bind_param('i', $magazzinoDays);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+
+    $magazzino_ok  = true;
+    $prodotti_mag  = (int)($row['prodotti_presenti'] ?? 0);
+    $prodotti_scad = (int)($row['prodotti_in_scadenza'] ?? 0);
+} else {
+    error_log('Magazzino stats prepare error: ' . $mysqli->error);
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
