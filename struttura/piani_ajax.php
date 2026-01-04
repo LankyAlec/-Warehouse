@@ -13,7 +13,7 @@ if ($edificio_id <= 0){
   exit;
 }
 
-$stmt = $mysqli->prepare("SELECT id, edificio_id, nome, livello, attivo FROM piani WHERE edificio_id=? ORDER BY livello ASC, nome ASC");
+$stmt = $mysqli->prepare("SELECT p.id, p.edificio_id, p.nome, p.livello, p.attivo, e.attivo AS edificio_attivo FROM piani p JOIN edifici e ON e.id = p.edificio_id WHERE p.edificio_id=? ORDER BY p.livello ASC, p.nome ASC");
 if (!$stmt){
   echo "<div class='alert alert-danger mb-0'>Errore DB: ".h($mysqli->error)."</div>";
   exit;
@@ -33,11 +33,13 @@ while($r = $res->fetch_assoc()){
   $liv  = (int)($r['livello'] ?? 0);
 
   $isActive = ($pianoSel === $id) ? " active" : "";
-  $on = ((int)$r['attivo'] === 1);
+  $edificioAttivo = ((int)($r['edificio_attivo'] ?? 1) === 1);
+  $on = ((int)$r['attivo'] === 1) && $edificioAttivo;
 
   $edit = "piano_edit.php?id=$id&edificio_id=$edificio_id&back=" . urlencode("struttura.php?edificio_id=$edificio_id&piano_id=$id");
   $back = "struttura.php?edificio_id=$edificio_id&piano_id=$id";
   $schedule = struttura_schedule_next($mysqli, 'piano', $id);
+  $toggleDisabled = $edificioAttivo ? '' : 'disabled';
   ?>
   <div class="item<?= $isActive ?>"
      data-id="<?= $id ?>"
@@ -46,6 +48,9 @@ while($r = $res->fetch_assoc()){
     <div class="main">
       <div class="name"><?= h($nome) ?></div>
       <div class="sub text-muted small">Livello: <?= $liv ?></div>
+      <?php if (!$edificioAttivo): ?>
+        <div class="text-danger small">Edificio disattivato: piano non attivo.</div>
+      <?php endif; ?>
       <?php if ($schedule): ?>
         <div class="schedule-note">
           Programma: <?= ((int)$schedule['stato'] === 1 ? 'Attiva' : 'Disattiva') ?>
@@ -55,7 +60,7 @@ while($r = $res->fetch_assoc()){
       <?php endif; ?>
     </div>
 
-    <div class="acts" onclick="event.stopPropagation()">
+    <div class="acts">
 
       <a class="btn btn-outline-primary btn-mini" href="<?= h($edit) ?>" title="Modifica">
         <i class="bi bi-pencil"></i>
@@ -89,6 +94,7 @@ while($r = $res->fetch_assoc()){
                  data-tipo="piano"
                  data-id="<?= $id ?>"
                  <?= $on ? 'checked' : '' ?>
+                 <?= $toggleDisabled ?>
                  onclick="event.stopPropagation()">
         </div>
 
