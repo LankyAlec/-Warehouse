@@ -12,33 +12,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
     flash_set('danger', 'Nome obbligatorio');
     mag_redirect('gestione_magazzini.php');
   }
-  try {
-    $stmt = $pdo->prepare("INSERT IGNORE INTO magazzini (nome, note) VALUES (:n, :note)");
-    $stmt->execute([':n' => $nome, ':note' => ($note !== '' ? $note : null)]);
-    flash_set('success', 'Magazzino salvato');
-  } catch (Throwable $e) {
-    error_log("magazzini.php add: ".$e->getMessage());
+  $stmt = mysqli_prepare($conn, "INSERT IGNORE INTO magazzini (nome, note) VALUES (?, ?)");
+  if (!$stmt) {
+    error_log('magazzini.php add: ' . mysqli_error($conn));
     flash_set('danger', 'Errore (controlla error_log PHP).');
+    mag_redirect('gestione_magazzini.php');
   }
+  $noteParam = ($note !== '' ? $note : null);
+  mysqli_stmt_bind_param($stmt, 'ss', $nome, $noteParam);
+  if (!mysqli_stmt_execute($stmt)) {
+    error_log('magazzini.php add: ' . mysqli_error($conn));
+    flash_set('danger', 'Errore (controlla error_log PHP).');
+    mysqli_stmt_close($stmt);
+    mag_redirect('gestione_magazzini.php');
+  }
+  mysqli_stmt_close($stmt);
+  flash_set('success', 'Magazzino salvato');
   mag_redirect('gestione_magazzini.php');
 }
 
 if (isset($_GET['del'])) {
   $id = qint($_GET['del'], 0);
   if ($id > 0) {
-    try {
-      $stmt = $pdo->prepare("DELETE FROM magazzini WHERE id=:id LIMIT 1");
-      $stmt->execute([':id' => $id]);
+    $stmt = mysqli_prepare($conn, "DELETE FROM magazzini WHERE id=? LIMIT 1");
+    if ($stmt) {
+      mysqli_stmt_bind_param($stmt, 'i', $id);
+      if (!mysqli_stmt_execute($stmt)) {
+        error_log('magazzini.php del: ' . mysqli_error($conn));
+        flash_set('danger', 'Errore eliminazione (probabile magazzino usato da prodotti).');
+        mysqli_stmt_close($stmt);
+        mag_redirect('gestione_magazzini.php');
+      }
+      mysqli_stmt_close($stmt);
       flash_set('success', 'Magazzino eliminato');
-    } catch (Throwable $e) {
-      error_log("magazzini.php del: ".$e->getMessage());
+    } else {
+      error_log('magazzini.php del: ' . mysqli_error($conn));
       flash_set('danger', 'Errore eliminazione (probabile magazzino usato da prodotti).');
     }
   }
   mag_redirect('gestione_magazzini.php');
 }
 
-$rows = $pdo->query("SELECT id, nome, note FROM magazzini ORDER BY nome")->fetchAll();
+$rows = [];
+$res = mysqli_query($conn, "SELECT id, nome, note FROM magazzini ORDER BY nome");
+if ($res) {
+  while ($r = mysqli_fetch_assoc($res)) {
+    $rows[] = $r;
+  }
+} else {
+  error_log('magazzini.php list: ' . mysqli_error($conn));
+}
 
 $flash = flash_take();
 
