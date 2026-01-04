@@ -4,8 +4,6 @@ require_once __DIR__ . '/../includes/helpers.php';
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
 $piano_id  = (int)($_GET['piano_id'] ?? 0);
 $cameraSel = (int)($_GET['camera_id'] ?? 0);
 
