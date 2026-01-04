@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../includes/struttura_status.php';
+require_once __DIR__ . '/../struttura/struttura_status.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 

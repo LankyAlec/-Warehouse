@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
-require_once __DIR__ . '/../includes/struttura_status.php';
+require_once __DIR__ . '/struttura_status.php';
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
