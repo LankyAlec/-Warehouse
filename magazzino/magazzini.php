@@ -217,9 +217,6 @@ require __DIR__ . '/../includes/header.php';
     <div class="text-secondary">Gestione prodotti, lotti, scadenze e posizioni</div>
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="gestione_magazzini.php">
-      <i class="bi bi-house-gear me-1"></i> Gestisci magazzini
-    </a>
     <a class="btn btn-primary" href="product_form.php">
       <i class="bi bi-plus-lg me-1"></i> Nuovo prodotto
     </a>
