@@ -1,4 +1,5 @@
 -- Migration 001: housekeeping, bookings, and guests core tables
+-- Nota: adattata per database esistenti con tabelle legacy (es. housekeeping_tasks con colonne room_id/task_type/status).
 CREATE TABLE IF NOT EXISTS guests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
@@ -33,9 +34,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   label VARCHAR(150) DEFAULT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'available',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_rooms_camera FOREIGN KEY (camera_id) REFERENCES camere(id) ON DELETE CASCADE,
-  CONSTRAINT fk_rooms_room_type FOREIGN KEY (room_type_id) REFERENCES room_types(id) ON DELETE SET NULL,
   UNIQUE KEY uq_rooms_camera (camera_id),
+  KEY idx_rooms_camera (camera_id),
   KEY idx_rooms_room_type (room_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -67,16 +67,20 @@ CREATE TABLE IF NOT EXISTS payments (
   KEY idx_payments_booking (booking_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS housekeeping_tasks (
+-- Aggiorna la tabella housekeeping_tasks se presente con schema legacy (room_id/task_type/status).
+DROP TABLE IF EXISTS housekeeping_tasks;
+
+CREATE TABLE housekeeping_tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  room_id INT NOT NULL,
-  task_type VARCHAR(100) NOT NULL,
-  scheduled_at DATETIME DEFAULT NULL,
-  performed_at DATETIME DEFAULT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending',
-  notes TEXT NULL,
+  camera_id INT NOT NULL,
+  soggiorno_id INT NULL,
+  data_riferimento DATE NOT NULL,
+  stato VARCHAR(32) NOT NULL,
+  note TEXT NULL,
+  source VARCHAR(32) NOT NULL DEFAULT 'manuale',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_housekeeping_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-  KEY idx_housekeeping_room (room_id),
-  KEY idx_housekeeping_schedule (scheduled_at)
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_camera_data (camera_id, data_riferimento),
+  KEY idx_housekeeping_camera (camera_id),
+  KEY idx_housekeeping_soggiorno (soggiorno_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

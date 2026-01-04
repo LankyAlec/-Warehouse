@@ -508,25 +508,70 @@ if (!function_exists('update_payment_status')) {
 }
 
 /* Housekeeping */
+if (!function_exists('normalize_housekeeping_status')) {
+    function normalize_housekeeping_status(string $status): string {
+        $status = strtoupper(trim($status));
+        $map = [
+            'PENDING'      => 'DA_PULIRE',
+            'IN_PROGRESS'  => 'IN_CORSO',
+            'DONE'         => 'COMPLETATA',
+            'CANCELLED'    => 'ANNULLATA',
+        ];
+        $status = $map[$status] ?? $status;
+        $allowed = ['DA_PULIRE', 'IN_CORSO', 'COMPLETATA', 'ANNULLATA'];
+        return in_array($status, $allowed, true) ? $status : 'DA_PULIRE';
+    }
+}
+
 if (!function_exists('schedule_housekeeping_task')) {
     function schedule_housekeeping_task(int $roomId, string $taskType, ?string $scheduledAt = null, string $status = 'pending', ?string $notes = null): ?int {
-        $stmt = db()->prepare("INSERT INTO housekeeping_tasks (room_id, task_type, scheduled_at, status, notes) VALUES (?, ?, ?, ?, ?)");
+        require_once __DIR__ . '/housekeeping.php';
+        housekeeping_ensure_tasks_table(db());
+
+        $date = $scheduledAt ?: date('Y-m-d');
+        $state = normalize_housekeeping_status($status);
+        $source = substr(trim($taskType) !== '' ? trim($taskType) : 'manuale', 0, 32);
+
+        $stmt = db()->prepare("
+            INSERT INTO housekeeping_tasks (camera_id, soggiorno_id, stato, data_riferimento, note, source, created_at, updated_at)
+            VALUES (?, NULL, ?, ?, ?, ?, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+              stato = VALUES(stato),
+              note = COALESCE(VALUES(note), note),
+              source = VALUES(source),
+              updated_at = VALUES(updated_at)
+        ");
         if (!$stmt) {
             return null;
         }
 
-        $stmt->bind_param("issss", $roomId, $taskType, $scheduledAt, $status, $notes);
+        $stmt->bind_param("issss", $roomId, $state, $date, $notes, $source);
         $ok = $stmt->execute();
-        $id = $ok ? (int)$stmt->insert_id : null;
+        $taskId = $ok ? (int)$stmt->insert_id : null;
+
+        if ($ok && $taskId === 0) {
+            $stmtCheck = db()->prepare("SELECT id FROM housekeeping_tasks WHERE camera_id=? AND data_riferimento=? LIMIT 1");
+            if ($stmtCheck) {
+                $stmtCheck->bind_param("is", $roomId, $date);
+                $stmtCheck->execute();
+                $res = $stmtCheck->get_result();
+                $taskId = $res ? (int)($res->fetch_assoc()['id'] ?? 0) : null;
+                $stmtCheck->close();
+            }
+        }
+
         $stmt->close();
 
-        return $ok ? $id : null;
+        return $ok ? $taskId : null;
     }
 }
 
 if (!function_exists('list_housekeeping_tasks_for_room')) {
     function list_housekeeping_tasks_for_room(int $roomId): array {
-        $stmt = db()->prepare("SELECT * FROM housekeeping_tasks WHERE room_id=? ORDER BY scheduled_at ASC, id DESC");
+        require_once __DIR__ . '/housekeeping.php';
+        housekeeping_ensure_tasks_table(db());
+
+        $stmt = db()->prepare("SELECT * FROM housekeeping_tasks WHERE camera_id=? ORDER BY data_riferimento DESC, id DESC");
         if (!$stmt) {
             return [];
         }
@@ -543,12 +588,16 @@ if (!function_exists('list_housekeeping_tasks_for_room')) {
 
 if (!function_exists('update_housekeeping_status')) {
     function update_housekeeping_status(int $id, string $status): bool {
-        $stmt = db()->prepare("UPDATE housekeeping_tasks SET status=? WHERE id=?");
+        require_once __DIR__ . '/housekeeping.php';
+        housekeeping_ensure_tasks_table(db());
+
+        $state = normalize_housekeeping_status($status);
+        $stmt = db()->prepare("UPDATE housekeeping_tasks SET stato=?, updated_at=NOW() WHERE id=?");
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param("si", $status, $id);
+        $stmt->bind_param("si", $state, $id);
         $ok = $stmt->execute();
         $stmt->close();
 
@@ -558,12 +607,16 @@ if (!function_exists('update_housekeeping_status')) {
 
 if (!function_exists('mark_housekeeping_performed')) {
     function mark_housekeeping_performed(int $id, ?string $performedAt = null, string $status = 'done'): bool {
-        $stmt = db()->prepare("UPDATE housekeeping_tasks SET performed_at=?, status=? WHERE id=?");
+        require_once __DIR__ . '/housekeeping.php';
+        housekeeping_ensure_tasks_table(db());
+
+        $state = normalize_housekeeping_status($status ?: 'done');
+        $stmt = db()->prepare("UPDATE housekeeping_tasks SET stato=?, updated_at=NOW() WHERE id=?");
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param("ssi", $performedAt, $status, $id);
+        $stmt->bind_param("si", $state, $id);
         $ok = $stmt->execute();
         $stmt->close();
 
