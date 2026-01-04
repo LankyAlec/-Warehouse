@@ -1,5 +1,6 @@
 <?php
 include __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/magazzino_bridge.php';
 
 $oggi = date('Y-m-d');
 
@@ -184,6 +185,12 @@ foreach ($rows as $rw) {
         $attesi_cena += $p;
     }
 }
+
+/* ================== 7) Magazzino: prodotti e scadenze ================== */
+$magazzinoStats = magazzino_stats(30);
+$magazzino_ok   = $magazzinoStats['ok'] ?? false;
+$prodotti_mag   = (int)($magazzinoStats['prodotti_presenti'] ?? 0);
+$prodotti_scad  = (int)($magazzinoStats['prodotti_in_scadenza'] ?? 0);
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -289,6 +296,31 @@ foreach ($rows as $rw) {
         </div>
         <div class="mt-2">
           <a class="small" href="<?= BASE_URL ?>/pulizie/pulizie.php">Vai alle pulizie →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4 col-lg-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Prodotti in magazzino</div>
+            <div class="display-6 mb-0">
+              <?= $magazzino_ok ? $prodotti_mag : '—' ?>
+            </div>
+            <div class="text-secondary small mt-1">
+              In scadenza (30 gg): <strong><?= $magazzino_ok ? $prodotti_scad : '—' ?></strong>
+            </div>
+          </div>
+          <i class="bi bi-box-seam fs-3 text-secondary"></i>
+        </div>
+        <div class="mt-2">
+          <a class="small" href="<?= BASE_URL ?>/magazzino/index.php">Vai al magazzino →</a>
+          <?php if (!$magazzino_ok): ?>
+            <div class="small text-danger mt-1">Dati non disponibili</div>
+          <?php endif; ?>
         </div>
       </div>
     </div>

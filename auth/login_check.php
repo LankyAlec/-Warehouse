@@ -9,12 +9,25 @@ if ($login === '' || $password === '') {
     exit;
 }
 
+if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+    error_log('Login: variabile $mysqli non inizializzata');
+    header("Location: login.php?error=1");
+    exit;
+}
+
 $stmt = $mysqli->prepare("
     SELECT id, username, email, password_hash, privilegi, attivo
     FROM utenti
     WHERE username = ? OR email = ?
     LIMIT 1
 ");
+
+if (!$stmt) {
+    error_log('Login prepare error: ' . $mysqli->error);
+    header("Location: login.php?error=1");
+    exit;
+}
+
 $stmt->bind_param("ss", $login, $login);
 $stmt->execute();
 $result = $stmt->get_result();

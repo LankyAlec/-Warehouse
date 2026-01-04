@@ -9,24 +9,33 @@ $db_pass = '-Alessio89-';
 $db_name = 'magazzino';
 $db_port = 3306;
 
-$conn = mysqli_connect($db_host, $db_user, $db_pass, $db_name, $db_port);
+$conn = @mysqli_connect($db_host, $db_user, $db_pass, $db_name, $db_port);
 
 if (!$conn) {
-  http_response_code(500);
-  echo "Errore DB: impossibile connettersi.";
-  exit;
+  if (!defined('MAGAZZINO_SILENT') || MAGAZZINO_SILENT !== true) {
+    http_response_code(500);
+    echo "Errore DB: impossibile connettersi.";
+    exit;
+  }
+  return null;
 }
 mysqli_set_charset($conn, 'utf8mb4');
 
-function esc(mysqli $conn, string $s): string {
-  return mysqli_real_escape_string($conn, $s);
+if (!function_exists('esc')) {
+  function esc(mysqli $conn, string $s): string {
+    return mysqli_real_escape_string($conn, $s);
+  }
 }
 
-function h($s): string {
-  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+if (!function_exists('h')) {
+  function h($s): string {
+    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+  }
 }
 
-function redirect(string $url): void {
-  header('Location: ' . $url);
-  exit;
+if (!function_exists('redirect')) {
+  function redirect(string $url): void {
+    header('Location: ' . $url);
+    exit;
+  }
 }

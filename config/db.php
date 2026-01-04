@@ -17,14 +17,21 @@ $db_pass = '';
 $db_name = 'Hotel';
 $db_port = 3306;
 
-$conn = mysqli_connect($db_host, $db_user, $db_pass, $db_name, $db_port);
+$mysqli = @new mysqli($db_host, $db_user, $db_pass, $db_name, $db_port);
 
-if (!$conn) {
+if ($mysqli->connect_errno) {
   http_response_code(500);
   echo "Errore DB: impossibile connettersi.";
+  error_log('DB connection error: ' . $mysqli->connect_error);
   exit;
 }
-mysqli_set_charset($conn, 'utf8mb4');
+
+if (!$mysqli->set_charset('utf8mb4')) {
+  error_log('DB charset error: ' . $mysqli->error);
+}
+
+// Alias for legacy code that may still reference $conn
+$conn = $mysqli;
 
 function esc(mysqli $conn, string $s): string {
   return mysqli_real_escape_string($conn, $s);
