@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/struttura_status.php';
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
@@ -25,6 +26,7 @@ while($r = $res->fetch_assoc()){
   $on = ((int)$r['attivo'] === 1);
   $edit = "edificio_edit.php?id=$id&back=" . urlencode("struttura.php?edificio_id=$id");
   $back = "struttura.php?edificio_id=$id";
+  $schedule = struttura_schedule_next($mysqli, 'edificio', $id);
   ?>
   <div class="item<?= $isActive ?>"
        data-id="<?= $id ?>"
@@ -32,6 +34,13 @@ while($r = $res->fetch_assoc()){
 
     <div class="main">
       <div class="name"><?= h($nome) ?></div>
+      <?php if ($schedule): ?>
+        <div class="schedule-note">
+          Programma: <?= ((int)$schedule['stato'] === 1 ? 'Attiva' : 'Disattiva') ?>
+          dal <?= h($schedule['start_date']) ?>
+          <?= $schedule['end_date'] ? ' al ' . h($schedule['end_date']) : '' ?>
+        </div>
+      <?php endif; ?>
     </div>
 
     <div class="acts" onclick="event.stopPropagation()">
@@ -39,6 +48,16 @@ while($r = $res->fetch_assoc()){
       <a class="btn btn-outline-primary btn-mini" href="<?= h($edit) ?>" title="Modifica">
         <i class="bi bi-pencil"></i>
       </a>
+
+      <button type="button"
+              class="btn btn-outline-secondary btn-mini js-btn-schedule"
+              title="Programma attivazione/disattivazione"
+              data-tipo="edificio"
+              data-id="<?= $id ?>"
+              data-label="<?= h($nome) ?>"
+              data-current="<?= $on ? 1 : 0 ?>">
+        <i class="bi bi-clock-history"></i>
+      </button>
 
       <form method="post" action="struttura_save.php" class="m-0"
             onsubmit="event.stopPropagation(); return confirm('Eliminare edificio? Verranno eliminati anche piani e camere.');">
