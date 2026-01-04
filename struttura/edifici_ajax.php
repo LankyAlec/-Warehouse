@@ -4,8 +4,6 @@ require_once __DIR__ . '/../includes/helpers.php';
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
 $edificioSel = (int)($_GET['edificio_id'] ?? 0);
 
 $res = $mysqli->query("SELECT id, nome, attivo FROM edifici ORDER BY nome ASC");
