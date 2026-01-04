@@ -1,11 +1,14 @@
 <?php
 declare(strict_types=1);
+require __DIR__ . '/init.php';
+
 $PAGE_TITLE = 'Fornitori';
-require __DIR__ . '/header.php';
 
 $fornitori = [];
 $res = mysqli_query($conn, "SELECT id, nome, attivo FROM fornitori ORDER BY nome ASC");
 while ($res && ($r = mysqli_fetch_assoc($res))) $fornitori[] = $r;
+
+require __DIR__ . '/../includes/header.php';
 ?>
 <div class="d-flex align-items-center justify-content-between mb-3">
   <div>
@@ -45,4 +48,4 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $fornitori[] = $r;
   </div>
 </div>
 
-<?php require __DIR__ . '/footer.php'; ?>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

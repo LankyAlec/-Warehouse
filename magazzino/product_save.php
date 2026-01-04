@@ -1,7 +1,7 @@
 <?php
 // prodotto_save.php
 declare(strict_types=1);
-require __DIR__ . '/config.php';
+require __DIR__ . '/init.php';
 
 $id  = qint($_POST['id'] ?? 0, 0);
 $mid = qint($_POST['mid'] ?? 0, 0);
@@ -18,13 +18,11 @@ if (!in_array($unita, $allowedU, true)) $unita = 'pz';
 
 if ($nome === '') {
   flash_set('danger', 'Nome obbligatorio');
-  header('Location: prodotto_form.php?mid='.$mid.($id>0?'&id='.$id:''));
-  exit;
+  mag_redirect('product_form.php?mid='.$mid.($id>0?'&id='.$id:''));
 }
 if ($mid <= 0) {
   flash_set('danger', 'Magazzino non valido');
-  header('Location: index.php');
-  exit;
+  mag_redirect('magazzini.php');
 }
 
 try {
@@ -61,9 +59,7 @@ try {
 } catch (Throwable $e) {
   error_log("prodotto_save.php: ".$e->getMessage());
   flash_set('danger', 'Errore salvataggio (controlla error_log PHP).');
-  header('Location: prodotto_form.php?mid='.$mid.($id>0?'&id='.$id:''));
-  exit;
+  mag_redirect('product_form.php?mid='.$mid.($id>0?'&id='.$id:''));
 }
 
-header('Location: index.php?mid='.$mid);
-exit;
+mag_redirect('magazzini.php?mid='.$mid);

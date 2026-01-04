@@ -1,13 +1,14 @@
 <?php
 declare(strict_types=1);
+require __DIR__ . '/init.php';
+
 $PAGE_TITLE = 'Prodotto';
-require __DIR__ . '/header.php';
 
 $id  = (int)($_GET['id'] ?? 0);
 $msg = trim((string)($_GET['msg'] ?? ''));
 $err = '';
 
-/** se arrivi da index.php con &lotto_id=... */
+/** se arrivi da magazzini.php con &lotto_id=... */
 $openLottoId = (int)($_GET['lotto_id'] ?? 0);
 
 /** lotto selezionato (master) */
@@ -315,11 +316,13 @@ if ($selectedLottoId > 0) {
   $chk = mysqli_query($conn, "SELECT 1 FROM lotti WHERE id=$selectedLottoId AND prodotto_id=$id LIMIT 1");
   if (!$chk || mysqli_num_rows($chk) === 0) $selectedLottoId = 0;
 }
+
+require __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="d-flex align-items-center justify-content-between mb-3">
   <div><h1 class="h4 mb-0"><?= $id>0 ? 'Modifica prodotto' : 'Nuovo prodotto' ?></h1></div>
-  <a class="btn btn-outline-secondary" href="index.php">← Indietro</a>
+  <a class="btn btn-outline-secondary" href="magazzini.php">← Indietro</a>
 </div>
 
 <?php if ($msg !== ''): ?><div id="flashAlert" class="alert alert-success"><?= h($msg) ?></div><?php endif; ?>
@@ -376,7 +379,7 @@ if ($selectedLottoId > 0) {
 
       <div class="col-12 d-flex gap-2">
         <button class="btn btn-primary">Salva</button>
-        <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+        <a class="btn btn-outline-secondary" href="magazzini.php">Annulla</a>
       </div>
     </form>
   </div>
@@ -941,7 +944,7 @@ if ($selectedLottoId > 0) {
   const urlParams = new URLSearchParams(window.location.search);
   const prodottoId = urlParams.get('id') || '0';
 
-  // lotto di partenza: accettiamo sia lotto_sel (interno) che lotto_id (da index.php)
+  // lotto di partenza: accettiamo sia lotto_sel (interno) che lotto_id (da magazzini.php)
   const initialUrlLotto = (
     urlParams.get('lotto_sel') ||
     urlParams.get('lotto_id') ||
@@ -1509,4 +1512,4 @@ lines.push(`<div><b>Note:</b> ${showOrDash(note)}</div>`);
 
 
 
-<?php require __DIR__ . '/footer.php'; ?>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

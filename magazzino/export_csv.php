@@ -8,7 +8,7 @@ ini_set('display_errors', '0');
 error_reporting(0);
 while (ob_get_level() > 0) { @ob_end_clean(); }
 
-require __DIR__ . '/config.php';
+require __DIR__ . '/init.php';
 
 /* fallback esc() se manca */
 if (!function_exists('esc')) {

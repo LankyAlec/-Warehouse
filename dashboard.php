@@ -356,7 +356,7 @@ if ($stmt) {
           <i class="bi bi-box-seam fs-3 text-secondary"></i>
         </div>
         <div class="mt-2">
-          <a class="small" href="<?= BASE_URL ?>/magazzino/index.php">Vai al magazzino →</a>
+          <a class="small" href="<?= BASE_URL ?>/magazzino/magazzini.php">Vai al magazzino →</a>
           <?php if (!$magazzino_ok): ?>
             <div class="small text-danger mt-1">Dati non disponibili</div>
           <?php endif; ?>

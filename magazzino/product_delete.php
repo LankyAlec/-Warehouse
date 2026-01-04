@@ -1,15 +1,14 @@
 <?php
 // prodotto_delete.php
 declare(strict_types=1);
-require __DIR__ . '/config.php';
+require __DIR__ . '/init.php';
 
 $id  = qint($_GET['id'] ?? 0, 0);
 $mid = qint($_GET['mid'] ?? 0, 0);
 
 if ($id <= 0) {
   flash_set('danger', 'ID non valido');
-  header('Location: index.php?mid='.$mid);
-  exit;
+  mag_redirect('magazzini.php?mid='.$mid);
 }
 
 try {
@@ -21,5 +20,4 @@ try {
   flash_set('danger', 'Errore eliminazione (controlla error_log PHP).');
 }
 
-header('Location: index.php?mid='.$mid);
-exit;
+mag_redirect('magazzini.php?mid='.$mid);
