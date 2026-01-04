@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/struttura_status.php';
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
@@ -37,6 +38,7 @@ while($r = $res->fetch_assoc()){
 
   $edit = "camera_edit.php?id=$id&piano_id=$piano_id&back=" . urlencode("struttura.php?piano_id=$piano_id&camera_id=$id");
   $back = "struttura.php?piano_id=$piano_id&camera_id=$id";
+  $schedule = struttura_schedule_next($mysqli, 'camera', $id);
   ?>
   <div class="item<?= $isActive ?>" data-id="<?= $id ?>">
 
@@ -45,6 +47,13 @@ while($r = $res->fetch_assoc()){
         <?= h($cod) ?><?= $nome !== '' ? " <span class='text-muted fw-normal'>— ".h($nome)."</span>" : "" ?>
       </div>
       <div class="sub text-muted small">Capienza base: <?= $cap ?></div>
+      <?php if ($schedule): ?>
+        <div class="schedule-note">
+          Programma: <?= ((int)$schedule['stato'] === 1 ? 'Attiva' : 'Disattiva') ?>
+          dal <?= h($schedule['start_date']) ?>
+          <?= $schedule['end_date'] ? ' al ' . h($schedule['end_date']) : '' ?>
+        </div>
+      <?php endif; ?>
     </div>
 
     <div class="acts" onclick="event.stopPropagation()">
@@ -52,6 +61,16 @@ while($r = $res->fetch_assoc()){
       <a class="btn btn-outline-primary btn-mini" href="<?= h($edit) ?>" title="Modifica">
         <i class="bi bi-pencil"></i>
       </a>
+
+      <button type="button"
+              class="btn btn-outline-secondary btn-mini js-btn-schedule"
+              title="Programma attivazione/disattivazione"
+              data-tipo="camera"
+              data-id="<?= $id ?>"
+              data-label="<?= h(trim($cod . ' ' . $nome)) ?>"
+              data-current="<?= $on ? 1 : 0 ?>">
+        <i class="bi bi-clock-history"></i>
+      </button>
 
       <form method="post" action="struttura_save.php" class="m-0"
             onsubmit="event.stopPropagation(); return confirm('Eliminare la camera?');">
