@@ -1,10 +1,18 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/struttura_status.php';
 
 /* fallback se in helpers non esiste require_root */
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
+
+// Applica eventuali schedulazioni dovute per la data odierna
+try {
+  struttura_schedule_apply_due($mysqli);
+} catch (Throwable $e) {
+  error_log('Errore applicazione schedulazioni: ' . $e->getMessage());
+}
 
 include __DIR__ . '/../includes/header.php';
 
@@ -77,6 +85,11 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
     display:inline-flex;
     align-items:center;
     justify-content:center;
+  }
+
+  .schedule-note{
+    color:#0d6efd;
+    font-size:.8rem;
   }
 </style>
 
@@ -162,6 +175,53 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
           Conferma
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal schedulazione -->
+<div class="modal fade" id="modalSchedule" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-clock-history"></i> Programma attivazione/disattivazione</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <form id="scheduleForm">
+        <div class="modal-body">
+          <input type="hidden" name="tipo" id="scheduleTipo">
+          <input type="hidden" name="id" id="scheduleId">
+
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Elemento</label>
+            <div class="fw-semibold" id="scheduleLabel">—</div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="scheduleStart">Data inizio</label>
+              <input type="date" class="form-control" id="scheduleStart" name="start_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="scheduleEnd">Data fine <span class="text-muted">(opzionale)</span></label>
+              <input type="date" class="form-control" id="scheduleEnd" name="end_date">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label" for="scheduleAction">Azione programmata</label>
+            <select class="form-select" id="scheduleAction" name="stato" required>
+              <option value="1">Attiva</option>
+              <option value="0">Disattiva</option>
+            </select>
+            <div class="form-text">Se imposti una data di fine, al termine verrà ripristinato lo stato attuale.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btnScheduleSubmit">Salva schedulazione</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -338,15 +398,25 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
   const root = document.querySelector('.container-fluid');
 
   // cascata consigliata
-  const CASCADE = 'off_only'; // oppure 'always'
+  const CASCADE = 'always'; // cascata sia in accensione che spegnimento
 
   const modalEl = document.getElementById('modalCascade');
   const msgEl   = document.getElementById('cascadeMsg');
   const hintEl  = document.getElementById('cascadeHint');
   const btnOk   = document.getElementById('btnCascadeConfirm');
 
-  const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+  const scheduleModalEl = document.getElementById('modalSchedule');
+  const scheduleForm    = document.getElementById('scheduleForm');
+  const scheduleTipo    = document.getElementById('scheduleTipo');
+  const scheduleId      = document.getElementById('scheduleId');
+  const scheduleLabel   = document.getElementById('scheduleLabel');
+  const scheduleStart   = document.getElementById('scheduleStart');
+  const scheduleEnd     = document.getElementById('scheduleEnd');
+  const scheduleAction  = document.getElementById('scheduleAction');
+  const btnScheduleSubmit = document.getElementById('btnScheduleSubmit');
 
+  let modal = null;
+  let scheduleModal = null;
   let pending = null; // { sw, tipo, id, val }
 
   function qs(obj){
@@ -439,95 +509,173 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
     return { title:'Confermi l’operazione?', hint:'' };
   }
 
-  // Intercetto i toggle
-  root.addEventListener('change', async (e) => {
-    const sw = e.target.closest('.js-toggle-attivo');
-    if (!sw) return;
+  function todayStr(){
+    const d = new Date();
+    const m = String(d.getMonth()+1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
 
-    const tipo = sw.dataset.tipo;
-    const id   = parseInt(sw.dataset.id, 10);
-    const val  = sw.checked ? 1 : 0;
+  function ensureBootstrap(){
+    return new Promise((resolve, reject) => {
+      if (window.bootstrap) return resolve(window.bootstrap);
+      const existing = document.querySelector('script[data-bs-autoload]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(window.bootstrap));
+        existing.addEventListener('error', () => reject(new Error('Bootstrap non caricato')));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js';
+      s.async = true;
+      s.dataset.bsAutoload = '1';
+      s.onload = () => resolve(window.bootstrap);
+      s.onerror = () => reject(new Error('Bootstrap non caricato'));
+      document.head.appendChild(s);
+    });
+  }
 
-    // Se manca bootstrap modal, fallback: conferma base solo su cascata "potenziale"
-    const hasModal = !!modal;
+  ensureBootstrap().then(() => {
+    modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+    scheduleModal = scheduleModalEl ? new bootstrap.Modal(scheduleModalEl) : null;
 
-    // Regola: mostro modale SOLO se è edificio/piano e l’azione causa cascata (off_only e val=0) o always
-    let mustAsk = false;
-    if (tipo === 'edificio' || tipo === 'piano') {
-      mustAsk = (CASCADE === 'always') || (CASCADE === 'off_only' && val === 0);
-    }
+    // Intercetto i toggle
+    root.addEventListener('change', async (e) => {
+      const sw = e.target.closest('.js-toggle-attivo');
+      if (!sw) return;
 
-    // se devo chiedere conferma: faccio preview e apro modale
-    if (mustAsk && hasModal) {
-      // metto subito lo switch in disabled (evita doppio click) ma NON salvo
+      const tipo = sw.dataset.tipo;
+      const id   = parseInt(sw.dataset.id, 10);
+      const val  = sw.checked ? 1 : 0;
+
+      // Se manca bootstrap modal, fallback: conferma base solo su cascata "potenziale"
+      const hasModal = !!modal;
+
+      // Regola: mostro modale SOLO se è edificio/piano e l’azione causa cascata (off_only e val=0) o always
+      let mustAsk = false;
+      if (tipo === 'edificio' || tipo === 'piano') {
+        mustAsk = (CASCADE === 'always') || (CASCADE === 'off_only' && val === 0);
+      }
+
+      // se devo chiedere conferma: faccio preview e apro modale
+      if (mustAsk && hasModal) {
+        // metto subito lo switch in disabled (evita doppio click) ma NON salvo
+        setSaving(sw, true);
+
+        try {
+          const pre = await previewCascade(tipo, id, val);
+          const m = makeMessage(pre);
+
+          msgEl.textContent = m.title;
+          hintEl.textContent = m.hint;
+
+          pending = { sw, tipo, id, val };
+
+          // colore bottone conferma coerente
+          btnOk.classList.toggle('btn-danger', val === 0);
+          btnOk.classList.toggle('btn-success', val === 1);
+
+          modal.show();
+        } catch(err) {
+          alert(err.message || 'Errore preview');
+          // rollback immediato
+          sw.checked = !sw.checked;
+          setSaving(sw, false);
+        }
+        return;
+      }
+
+      // Se non devo chiedere, salvo subito
       setSaving(sw, true);
 
       try {
-        const pre = await previewCascade(tipo, id, val);
-        const m = makeMessage(pre);
-
-        msgEl.textContent = m.title;
-        hintEl.textContent = m.hint;
-
-        pending = { sw, tipo, id, val };
-
-        // colore bottone conferma coerente
-        btnOk.classList.toggle('btn-danger', val === 0);
-        btnOk.classList.toggle('btn-success', val === 1);
-
-        modal.show();
+        await doToggle(tipo, id, val);
+        await reloadUI(); // sempre dal DB
       } catch(err) {
-        alert(err.message || 'Errore preview');
-        // rollback immediato
+        alert(err.message || 'Errore salvataggio');
+        // rollback UI
         sw.checked = !sw.checked;
+      } finally {
         setSaving(sw, false);
       }
-      return;
-    }
+    });
 
-    // Se non devo chiedere, salvo subito
-    setSaving(sw, true);
+    // Apertura modale schedulazione
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest('.js-btn-schedule');
+      if (!btn) return;
+      e.stopPropagation();
+      if (!scheduleModal) return;
 
-    try {
-      await doToggle(tipo, id, val);
-      await reloadUI(); // sempre dal DB
-    } catch(err) {
-      alert(err.message || 'Errore salvataggio');
-      // rollback UI
+      scheduleTipo.value = btn.dataset.tipo || '';
+      scheduleId.value = btn.dataset.id || '';
+      scheduleLabel.textContent = btn.dataset.label || btn.dataset.nome || `${btn.dataset.tipo} #${btn.dataset.id}`;
+      scheduleAction.value = btn.dataset.current === '1' ? '0' : '1';
+      scheduleStart.value = todayStr();
+      scheduleEnd.value = '';
+
+      scheduleModal.show();
+    });
+
+    // Salvataggio schedulazione
+    scheduleForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!scheduleModal) return;
+
+      btnScheduleSubmit.disabled = true;
+      try {
+        const fd = new FormData(scheduleForm);
+        fd.append('cascade', CASCADE);
+
+        const res = await fetch('struttura_schedule_save.php', {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const j = await res.json().catch(()=>null);
+        if(!j || !j.ok) throw new Error((j && j.msg) ? j.msg : 'Errore salvataggio');
+
+        alert(j.msg || 'Schedulazione salvata');
+        await reloadUI();
+        scheduleModal.hide();
+      } catch(err){
+        alert(err.message || 'Errore salvataggio');
+      } finally {
+        btnScheduleSubmit.disabled = false;
+      }
+    });
+
+    // Conferma dalla modale
+    btnOk.addEventListener('click', async () => {
+      if (!pending) return;
+
+      const { sw, tipo, id, val } = pending;
+      pending = null;
+      modal.hide();
+
+      try {
+        await doToggle(tipo, id, val);
+        await reloadUI();
+      } catch(err) {
+        alert(err.message || 'Errore salvataggio');
+        // rollback (lui aveva già cambiato)
+        sw.checked = !sw.checked;
+      } finally {
+        setSaving(sw, false);
+      }
+    });
+
+    // Se annulli la modale → rollback dello switch
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+      if (!pending) return;
+      const { sw } = pending;
+      // rollback: torniamo allo stato prima del change
       sw.checked = !sw.checked;
-    } finally {
       setSaving(sw, false);
-    }
-  });
-
-  // Conferma dalla modale
-  btnOk.addEventListener('click', async () => {
-    if (!pending) return;
-
-    const { sw, tipo, id, val } = pending;
-    pending = null;
-    modal.hide();
-
-    try {
-      await doToggle(tipo, id, val);
-      await reloadUI();
-    } catch(err) {
-      alert(err.message || 'Errore salvataggio');
-      // rollback (lui aveva già cambiato)
-      sw.checked = !sw.checked;
-    } finally {
-      setSaving(sw, false);
-    }
-  });
-
-  // Se annulli la modale → rollback dello switch
-  modalEl?.addEventListener('hidden.bs.modal', () => {
-    if (!pending) return;
-    const { sw } = pending;
-    // rollback: torniamo allo stato prima del change
-    sw.checked = !sw.checked;
-    setSaving(sw, false);
-    pending = null;
+      pending = null;
+    });
+  }).catch((err) => {
+    console.error(err);
   });
 })();
 </script>
