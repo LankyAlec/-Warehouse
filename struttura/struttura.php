@@ -1,10 +1,18 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/struttura_status.php';
 
 /* fallback se in helpers non esiste require_root */
 if (!function_exists('require_root')) { function require_root(){} }
 require_root();
+
+// Applica eventuali schedulazioni dovute per la data odierna
+try {
+  struttura_schedule_apply_due($mysqli);
+} catch (Throwable $e) {
+  error_log('Errore applicazione schedulazioni: ' . $e->getMessage());
+}
 
 include __DIR__ . '/../includes/header.php';
 
@@ -77,6 +85,11 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
     display:inline-flex;
     align-items:center;
     justify-content:center;
+  }
+
+  .schedule-note{
+    color:#0d6efd;
+    font-size:.8rem;
   }
 </style>
 
@@ -162,6 +175,53 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
           Conferma
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal schedulazione -->
+<div class="modal fade" id="modalSchedule" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-clock-history"></i> Programma attivazione/disattivazione</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <form id="scheduleForm">
+        <div class="modal-body">
+          <input type="hidden" name="tipo" id="scheduleTipo">
+          <input type="hidden" name="id" id="scheduleId">
+
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Elemento</label>
+            <div class="fw-semibold" id="scheduleLabel">—</div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="scheduleStart">Data inizio</label>
+              <input type="date" class="form-control" id="scheduleStart" name="start_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="scheduleEnd">Data fine <span class="text-muted">(opzionale)</span></label>
+              <input type="date" class="form-control" id="scheduleEnd" name="end_date">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label" for="scheduleAction">Azione programmata</label>
+            <select class="form-select" id="scheduleAction" name="stato" required>
+              <option value="1">Attiva</option>
+              <option value="0">Disattiva</option>
+            </select>
+            <div class="form-text">Se imposti una data di fine, al termine verrà ripristinato lo stato attuale.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btnScheduleSubmit">Salva schedulazione</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -338,7 +398,7 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
   const root = document.querySelector('.container-fluid');
 
   // cascata consigliata
-  const CASCADE = 'off_only'; // oppure 'always'
+  const CASCADE = 'always'; // cascata sia in accensione che spegnimento
 
   const modalEl = document.getElementById('modalCascade');
   const msgEl   = document.getElementById('cascadeMsg');
@@ -346,6 +406,17 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
   const btnOk   = document.getElementById('btnCascadeConfirm');
 
   const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+  const scheduleModalEl = document.getElementById('modalSchedule');
+  const scheduleModal   = scheduleModalEl ? new bootstrap.Modal(scheduleModalEl) : null;
+  const scheduleForm    = document.getElementById('scheduleForm');
+  const scheduleTipo    = document.getElementById('scheduleTipo');
+  const scheduleId      = document.getElementById('scheduleId');
+  const scheduleLabel   = document.getElementById('scheduleLabel');
+  const scheduleStart   = document.getElementById('scheduleStart');
+  const scheduleEnd     = document.getElementById('scheduleEnd');
+  const scheduleAction  = document.getElementById('scheduleAction');
+  const btnScheduleSubmit = document.getElementById('btnScheduleSubmit');
 
   let pending = null; // { sw, tipo, id, val }
 
@@ -439,6 +510,13 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
     return { title:'Confermi l’operazione?', hint:'' };
   }
 
+  function todayStr(){
+    const d = new Date();
+    const m = String(d.getMonth()+1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
   // Intercetto i toggle
   root.addEventListener('change', async (e) => {
     const sw = e.target.closest('.js-toggle-attivo');
@@ -497,6 +575,51 @@ $piano_id    = (int)($_GET['piano_id'] ?? 0);
       sw.checked = !sw.checked;
     } finally {
       setSaving(sw, false);
+    }
+  });
+
+  // Apertura modale schedulazione
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('.js-btn-schedule');
+    if (!btn) return;
+    e.stopPropagation();
+    if (!scheduleModal) return;
+
+    scheduleTipo.value = btn.dataset.tipo || '';
+    scheduleId.value = btn.dataset.id || '';
+    scheduleLabel.textContent = btn.dataset.label || btn.dataset.nome || `${btn.dataset.tipo} #${btn.dataset.id}`;
+    scheduleAction.value = btn.dataset.current === '1' ? '0' : '1';
+    scheduleStart.value = todayStr();
+    scheduleEnd.value = '';
+
+    scheduleModal.show();
+  });
+
+  // Salvataggio schedulazione
+  scheduleForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!scheduleModal) return;
+
+    btnScheduleSubmit.disabled = true;
+    try {
+      const fd = new FormData(scheduleForm);
+      fd.append('cascade', CASCADE);
+
+      const res = await fetch('struttura_schedule_save.php', {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const j = await res.json().catch(()=>null);
+      if(!j || !j.ok) throw new Error((j && j.msg) ? j.msg : 'Errore salvataggio');
+
+      alert(j.msg || 'Schedulazione salvata');
+      await reloadUI();
+      scheduleModal.hide();
+    } catch(err){
+      alert(err.message || 'Errore salvataggio');
+    } finally {
+      btnScheduleSubmit.disabled = false;
     }
   });
 
