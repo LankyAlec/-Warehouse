@@ -37,3 +37,4 @@ function h($s): string {
 function redirect(string $url): void {
   header('Location: ' . $url);
   exit;
+}
