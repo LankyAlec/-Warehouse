@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/config.php'; // $conn (mysqli) solo backend
+require __DIR__ . '/init.php'; // $conn (mysqli) solo backend
 
 header('Content-Type: application/json; charset=utf-8');
 ini_set('display_errors', '0');

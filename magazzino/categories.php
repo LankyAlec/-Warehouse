@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
+require __DIR__ . '/init.php';
+
 $PAGE_TITLE = 'Categorie';
-require __DIR__ . '/header.php';
 
 $q       = trim((string)($_GET['q'] ?? ''));
 $page    = max(1, (int)($_GET['page'] ?? 1));
@@ -20,13 +21,13 @@ if (($_POST['action'] ?? '') === 'add') {
     $tipoE = "'" . esc($conn, $tipo) . "'";
     mysqli_query($conn, "INSERT IGNORE INTO categorie (nome,tipo) VALUES ($nomeE,$tipoE)");
   }
-  redirect('categories.php');
+  mag_redirect('categories.php');
 }
 
 if (($_POST['action'] ?? '') === 'del') {
   $id = (int)($_POST['id'] ?? 0);
   if ($id > 0) mysqli_query($conn, "DELETE FROM categorie WHERE id=$id LIMIT 1");
-  redirect('categories.php');
+  mag_redirect('categories.php');
 }
 
 if (($_POST['action'] ?? '') === 'edit') {
@@ -38,7 +39,7 @@ if (($_POST['action'] ?? '') === 'edit') {
     $tipoE = "'" . esc($conn, $tipo) . "'";
     mysqli_query($conn, "UPDATE categorie SET nome=$nomeE, tipo=$tipoE WHERE id=$id LIMIT 1");
   }
-  redirect('categories.php?page=' . $page . '&q=' . urlencode($q));
+  mag_redirect('categories.php?page=' . $page . '&q=' . urlencode($q));
 }
 
 if ($editId > 0) {
@@ -80,6 +81,8 @@ LIMIT $perPage OFFSET $offset
 ";
 $res = mysqli_query($conn, $sql);
 while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
+
+require __DIR__ . '/../includes/header.php';
 ?>
 <?php $from = $total ? ($offset + 1) : 0; $to = min($offset + $perPage, $total); ?>
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -224,4 +227,4 @@ while ($res && ($r = mysqli_fetch_assoc($res))) $rows[] = $r;
 })();
 </script>
 
-<?php require __DIR__ . '/footer.php'; ?>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

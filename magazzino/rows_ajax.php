@@ -27,7 +27,7 @@ register_shutdown_function(function () {
   }
 });
 
-require __DIR__ . '/config.php';
+require __DIR__ . '/init.php';
 
 /* fallback esc() */
 if (!function_exists('esc')) {
@@ -286,7 +286,7 @@ if (!$rows) {
         <!-- ELIMINA -->
         <form class="d-inline"
               method="post"
-              action="index.php"
+              action="magazzini.php"
               onsubmit="return confirm('Eliminare il prodotto?');">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= $pid ?>">
@@ -312,10 +312,10 @@ $next = min($total_pages, $page + 1);
 $baseParams = $_GET;
 
 $baseParams['page'] = $prev;
-$prevUrl = 'index.php?' . http_build_query($baseParams);
+$prevUrl = 'magazzini.php?' . http_build_query($baseParams);
 
 $baseParams['page'] = $next;
-$nextUrl = 'index.php?' . http_build_query($baseParams);
+$nextUrl = 'magazzini.php?' . http_build_query($baseParams);
 
 ob_start();
 ?>

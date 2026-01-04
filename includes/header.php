@@ -129,7 +129,7 @@ function in_gruppo($codice){
                 <!-- MAGAZZINO -->
                 <?php if ($isRoot || in_gruppo('Magazzino')): ?>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= BASE_URL ?>/magazzino/index.php">
+                    <a class="nav-link" href="<?= BASE_URL ?>/magazzino/magazzini.php">
                         <i class="bi bi-box-seam"></i> Magazzino
                     </a>
                 </li>
