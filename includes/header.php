@@ -142,10 +142,11 @@ function in_gruppo($codice){
                         <i class="bi bi-shield-lock"></i> Amministrazione
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/utenti.php">Utenti</a></li>
-                        <li><a class="dropdown-item" href="<?= BASE_URL ?>/struttura/struttura.php">Struttura</a></li>
                         <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/tariffe.php">Tariffe</a></li>
+                        <li><a class="dropdown-item" href="<?= BASE_URL ?>/struttura/struttura.php">Struttura</a></li>
                         <li><a class="dropdown-item" href="<?= BASE_URL ?>/servizi/servizi.php">Servizi</a></li>
+                        <li><a class="dropdown-item" href="<?= BASE_URL ?>/magazzino/gestione_magazzini.php">Magazzini</a></li>
+                        <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/utenti.php">Utenti</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
