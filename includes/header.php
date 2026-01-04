@@ -126,6 +126,15 @@ function in_gruppo($codice){
                 </li>
                 <?php endif; ?>
 
+                <!-- MAGAZZINO -->
+                <?php if ($isRoot || in_gruppo('Magazzino')): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= BASE_URL ?>/magazzino/index.php">
+                        <i class="bi bi-box-seam"></i> Magazzino
+                    </a>
+                </li>
+                <?php endif; ?>
+
                 <!-- AMMINISTRAZIONE -->
                 <?php if ($isRoot): ?>
                 <li class="nav-item dropdown">
