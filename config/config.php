@@ -9,7 +9,3 @@ session_start();
 define('APP_NAME', 'Hotel Manager');
 define('BASE_URL', '/hotel');
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'LankyAlec');
-define('DB_PASS', '-Alessio89-');
-define('DB_NAME', 'Hotel');
