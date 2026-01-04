@@ -43,7 +43,7 @@ while($r = $res->fetch_assoc()){
       <?php endif; ?>
     </div>
 
-    <div class="acts" onclick="event.stopPropagation()">
+    <div class="acts">
 
       <a class="btn btn-outline-primary btn-mini" href="<?= h($edit) ?>" title="Modifica">
         <i class="bi bi-pencil"></i>

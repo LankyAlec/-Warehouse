@@ -13,7 +13,21 @@ if ($piano_id <= 0){
   exit;
 }
 
-$stmt = $mysqli->prepare("SELECT id, piano_id, codice, nome, capienza_base, attiva FROM camere WHERE piano_id=? ORDER BY codice ASC, nome ASC");
+$stmt = $mysqli->prepare("
+  SELECT c.id,
+         c.piano_id,
+         c.codice,
+         c.nome,
+         c.capienza_base,
+         c.attiva,
+         p.attivo AS piano_attivo,
+         e.attivo AS edificio_attivo
+  FROM camere c
+  JOIN piani p ON p.id = c.piano_id
+  JOIN edifici e ON e.id = p.edificio_id
+  WHERE c.piano_id=?
+  ORDER BY c.codice ASC, c.nome ASC
+");
 if (!$stmt){
   echo "<div class='alert alert-danger mb-0'>Errore DB: ".h($mysqli->error)."</div>";
   exit;
@@ -34,11 +48,14 @@ while($r = $res->fetch_assoc()){
   $cap = (int)($r['capienza_base'] ?? 2);
 
   $isActive = ($cameraSel === $id) ? " active" : "";
-  $on = ((int)$r['attiva'] === 1);
+  $pianoAttivo = ((int)($r['piano_attivo'] ?? 1) === 1);
+  $edificioAttivo = ((int)($r['edificio_attivo'] ?? 1) === 1);
+  $on = ((int)$r['attiva'] === 1) && $pianoAttivo && $edificioAttivo;
 
   $edit = "camera_edit.php?id=$id&piano_id=$piano_id&back=" . urlencode("struttura.php?piano_id=$piano_id&camera_id=$id");
   $back = "struttura.php?piano_id=$piano_id&camera_id=$id";
   $schedule = struttura_schedule_next($mysqli, 'camera', $id);
+  $toggleDisabled = ($pianoAttivo && $edificioAttivo) ? '' : 'disabled';
   ?>
   <div class="item<?= $isActive ?>" data-id="<?= $id ?>">
 
@@ -47,6 +64,11 @@ while($r = $res->fetch_assoc()){
         <?= h($cod) ?><?= $nome !== '' ? " <span class='text-muted fw-normal'>— ".h($nome)."</span>" : "" ?>
       </div>
       <div class="sub text-muted small">Capienza base: <?= $cap ?></div>
+      <?php if (!$edificioAttivo): ?>
+        <div class="text-danger small">Edificio disattivato: camera non attiva.</div>
+      <?php elseif (!$pianoAttivo): ?>
+        <div class="text-danger small">Piano disattivato: camera non attiva.</div>
+      <?php endif; ?>
       <?php if ($schedule): ?>
         <div class="schedule-note">
           Programma: <?= ((int)$schedule['stato'] === 1 ? 'Attiva' : 'Disattiva') ?>
@@ -56,7 +78,7 @@ while($r = $res->fetch_assoc()){
       <?php endif; ?>
     </div>
 
-    <div class="acts" onclick="event.stopPropagation()">
+    <div class="acts">
 
       <a class="btn btn-outline-primary btn-mini" href="<?= h($edit) ?>" title="Modifica">
         <i class="bi bi-pencil"></i>
@@ -90,6 +112,7 @@ while($r = $res->fetch_assoc()){
                  data-tipo="camera"
                  data-id="<?= $id ?>"
                  <?= $on ? 'checked' : '' ?>
+                 <?= $toggleDisabled ?>
                  onclick="event.stopPropagation()">
         </div>
 
