@@ -5,7 +5,6 @@ if (!function_exists('require_root')) { function require_root(){} }
 require_root();
 
 include __DIR__ . '/../includes/header.php';
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 $id = (int)($_GET['id'] ?? 0);
 $edificio_id = (int)($_GET['edificio_id'] ?? 0);
